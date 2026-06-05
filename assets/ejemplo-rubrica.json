@@ -1,0 +1,134 @@
+{
+  "titulo": "TP2 - API REST de Productos",
+  "descripcion": "Desarrollo de una API REST con Express.js que implemente el CRUD completo de productos, con validaciones, manejo de errores y persistencia. Entrega vía repositorio Git público con README de ejecución.",
+  "puntaje_maximo": 100,
+  "metadata": {
+    "materia": "Programación Backend",
+    "lenguaje": "JavaScript",
+    "framework": "Express.js",
+    "formato_entrega": "repositorio Git público"
+  },
+  "criterios": [
+    {
+      "id": "C1",
+      "nombre": "Estructura del proyecto",
+      "descripcion": "Organización de archivos, dependencias y configuración inicial acorde a la consigna.",
+      "peso": 20,
+      "instrucciones_puntuacion": "Repartir proporcionalmente entre los subcriterios. Sin package.json válido, el criterio no supera el 50%.",
+      "subcriterios": [
+        {
+          "id": "C1.1",
+          "descripcion": "package.json con las dependencias exigidas (express, cors, dotenv).",
+          "evidencias": [
+            "El archivo package.json existe en la raíz",
+            "La dependencia express está declarada",
+            "La dependencia cors está declarada",
+            "La dependencia dotenv está declarada"
+          ]
+        },
+        {
+          "id": "C1.2",
+          "descripcion": "Estructura de carpetas separada en routes, controllers y models.",
+          "evidencias": [
+            "Existe la carpeta src/",
+            "Existen subcarpetas routes/, controllers/ y models/",
+            "Los archivos están ubicados en la carpeta que les corresponde"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "nombre": "Endpoints CRUD",
+      "descripcion": "Implementación completa de Create, Read, Update y Delete sobre el recurso productos.",
+      "peso": 45,
+      "instrucciones_puntuacion": "Cada operación vale aproximadamente 11 puntos. Descontar si falta validación de entrada o manejo de errores.",
+      "subcriterios": [
+        {
+          "id": "C2.1",
+          "descripcion": "POST /productos crea un producto y devuelve 201.",
+          "evidencias": [
+            "Existe la ruta POST /productos",
+            "El handler persiste el producto",
+            "Responde con status 201 ante éxito"
+          ]
+        },
+        {
+          "id": "C2.2",
+          "descripcion": "GET /productos y GET /productos/:id devuelven datos correctamente.",
+          "evidencias": [
+            "Existe la ruta GET /productos que lista productos",
+            "Existe la ruta GET /productos/:id que devuelve uno",
+            "GET /productos/:id inexistente responde 404"
+          ]
+        },
+        {
+          "id": "C2.3",
+          "descripcion": "PUT y DELETE sobre /productos/:id funcionan.",
+          "evidencias": [
+            "Existe la ruta PUT /productos/:id que actualiza",
+            "Existe la ruta DELETE /productos/:id que elimina",
+            "Operar sobre un id inexistente responde 404"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "nombre": "Validaciones y manejo de errores",
+      "descripcion": "Validación de inputs y respuestas de error con códigos HTTP coherentes.",
+      "peso": 20,
+      "subcriterios": [
+        {
+          "id": "C3.1",
+          "descripcion": "Las entradas inválidas son rechazadas con 400.",
+          "evidencias": [
+            "Crear un producto sin campos obligatorios responde 400",
+            "El mensaje de error indica qué campo falta"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "nombre": "Documentación de ejecución",
+      "descripcion": "README que permita levantar el proyecto sin consultar al alumno.",
+      "peso": 15,
+      "subcriterios": [
+        {
+          "id": "C4.1",
+          "descripcion": "README con pasos de instalación y ejecución.",
+          "evidencias": [
+            "Existe un archivo README",
+            "Incluye el comando de instalación de dependencias",
+            "Incluye el comando para levantar el servidor"
+          ]
+        }
+      ]
+    }
+  ],
+  "penalizaciones": [
+    {
+      "id": "P1",
+      "descripcion": "Repositorio privado o inaccesible al momento de corregir.",
+      "descuento_porcentaje": 100
+    },
+    {
+      "id": "P2",
+      "descripcion": "El proyecto no levanta siguiendo los pasos del README.",
+      "descuento_porcentaje": 30
+    }
+  ],
+  "condiciones_desaprobacion": [
+    {
+      "id": "CD1",
+      "condicion": "Plagio detectado entre entregas.",
+      "nota_maxima": 0
+    },
+    {
+      "id": "CD2",
+      "condicion": "No implementa al menos 3 de las 4 operaciones CRUD.",
+      "nota_maxima": 30
+    }
+  ]
+}

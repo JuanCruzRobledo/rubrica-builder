@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Salida del modo TEST
+simulacion/
+**/simulacion/
+
+# SO / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

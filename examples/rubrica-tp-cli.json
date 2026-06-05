@@ -1,0 +1,182 @@
+{
+  "titulo": "TP3 - Gestor de Tareas por Línea de Comandos (Python)",
+  "descripcion": "Aplicación de consola en Python 3.10+ usando exclusivamente la librería estándar (sin librerías externas) que gestiona una lista de tareas persistente. Permite agregar, listar, marcar como hecha y eliminar tareas por id, con persistencia en un archivo tareas.json que se carga al iniciar. Maneja ids inexistentes sin romperse, organiza el código en al menos dos archivos (lógica + main.py) e incluye README con instrucciones de ejecución. Entrega vía repositorio Git público y accesible al momento de la corrección.",
+  "puntaje_maximo": 100,
+  "metadata": {
+    "materia": "Programación I",
+    "lenguaje": "Python 3.10+",
+    "dependencias": "solo librería estándar (sin librerías externas)",
+    "formato_entrega": "repositorio Git público y accesible",
+    "archivo_persistencia": "tareas.json",
+    "entry_point": "main.py"
+  },
+  "criterios": [
+    {
+      "id": "C1",
+      "nombre": "Funcionalidades del gestor de tareas",
+      "descripcion": "Operaciones obligatorias: agregar, listar (con id, descripción y estado), marcar como hecha por id y eliminar por id.",
+      "peso": 40,
+      "instrucciones_puntuacion": "Cada una de las cuatro operaciones (agregar, listar, marcar hecha, eliminar) vale aproximadamente 10 puntos. Si falta una operación completa, descontar su parte proporcional.",
+      "subcriterios": [
+        {
+          "id": "C1.1",
+          "descripcion": "Permite agregar una tarea con una descripción.",
+          "evidencias": [
+            "Existe una opción de menú o función para agregar una tarea",
+            "La tarea agregada guarda una descripción ingresada por el usuario"
+          ]
+        },
+        {
+          "id": "C1.2",
+          "descripcion": "Permite listar todas las tareas mostrando id, descripción y estado (pendiente/hecha).",
+          "evidencias": [
+            "Existe una opción de menú o función para listar las tareas",
+            "El listado muestra un id por cada tarea",
+            "El listado muestra la descripción de cada tarea",
+            "El listado muestra el estado pendiente/hecha de cada tarea"
+          ]
+        },
+        {
+          "id": "C1.3",
+          "descripcion": "Permite marcar una tarea como hecha por su id.",
+          "evidencias": [
+            "Existe una opción de menú o función para marcar una tarea como hecha indicando su id",
+            "Al marcar, el estado de la tarea correspondiente pasa a hecha"
+          ]
+        },
+        {
+          "id": "C1.4",
+          "descripcion": "Permite eliminar una tarea por su id.",
+          "evidencias": [
+            "Existe una opción de menú o función para eliminar una tarea indicando su id",
+            "Al eliminar, la tarea con ese id deja de existir en la lista"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "nombre": "Persistencia en tareas.json",
+      "descripcion": "Las tareas persisten entre ejecuciones en un archivo tareas.json; al iniciar, la app carga lo que haya en ese archivo.",
+      "peso": 20,
+      "instrucciones_puntuacion": "Sin persistencia real en tareas.json el criterio no supera el 50%. Verificar tanto la escritura como la carga inicial.",
+      "subcriterios": [
+        {
+          "id": "C2.1",
+          "descripcion": "Las tareas se guardan en un archivo tareas.json.",
+          "evidencias": [
+            "El código escribe los datos de las tareas en un archivo llamado tareas.json",
+            "Las tareas creadas/modificadas/eliminadas se reflejan en el archivo tareas.json"
+          ]
+        },
+        {
+          "id": "C2.2",
+          "descripcion": "Al iniciar, la app carga las tareas existentes desde tareas.json.",
+          "evidencias": [
+            "El código lee tareas.json al iniciar la aplicación",
+            "Las tareas leídas del archivo quedan disponibles en la sesión actual"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "nombre": "Requisitos técnicos y robustez",
+      "descripcion": "Uso exclusivo de la librería estándar, menú por entrada de consola (input) y manejo de ids inexistentes sin romper la aplicación.",
+      "peso": 25,
+      "instrucciones_puntuacion": "El uso de librerías externas es una violación grave del requisito técnico (ver penalizaciones). Verificar que un id inválido no produzca traceback.",
+      "subcriterios": [
+        {
+          "id": "C3.1",
+          "descripcion": "Usa exclusivamente la librería estándar de Python (sin librerías externas).",
+          "evidencias": [
+            "No hay imports de librerías externas (todo lo importado pertenece a la librería estándar de Python)",
+            "No existe un archivo de dependencias externas (requirements.txt, Pipfile, etc.) que declare paquetes de terceros"
+          ]
+        },
+        {
+          "id": "C3.2",
+          "descripcion": "El menú se maneja por entrada del usuario en consola mediante input.",
+          "evidencias": [
+            "El código usa input() para recibir las opciones del menú del usuario",
+            "La interacción ocurre por consola (no por argumentos de línea de comandos ni interfaz gráfica)"
+          ]
+        },
+        {
+          "id": "C3.3",
+          "descripcion": "Ingresar un id inexistente al marcar o eliminar muestra un mensaje de error claro y no rompe la app (sin traceback).",
+          "evidencias": [
+            "Al marcar como hecha un id inexistente se muestra un mensaje de error claro",
+            "Al eliminar un id inexistente se muestra un mensaje de error claro",
+            "Ante un id inexistente la app no termina con un traceback (maneja el caso sin excepción no controlada)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "nombre": "Estructura del proyecto",
+      "descripcion": "Código organizado en al menos dos archivos: uno con la lógica (funciones) y otro que sea el punto de entrada (main.py).",
+      "peso": 5,
+      "subcriterios": [
+        {
+          "id": "C4.1",
+          "descripcion": "El código está separado en al menos dos archivos: lógica y punto de entrada main.py.",
+          "evidencias": [
+            "Existe un archivo main.py que actúa como punto de entrada",
+            "Existe al menos otro archivo .py que contiene la lógica (funciones) separada del punto de entrada"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "nombre": "Entrega y documentación",
+      "descripcion": "README con instrucciones de ejecución y exclusión de tareas.json del control de versiones mediante .gitignore.",
+      "peso": 10,
+      "subcriterios": [
+        {
+          "id": "C5.1",
+          "descripcion": "README con instrucciones de cómo ejecutar la app (python main.py).",
+          "evidencias": [
+            "Existe un archivo README",
+            "El README indica cómo ejecutar la app (incluye el comando python main.py o equivalente)"
+          ]
+        },
+        {
+          "id": "C5.2",
+          "descripcion": "El archivo tareas.json con datos de prueba no está versionado y figura en .gitignore.",
+          "evidencias": [
+            "Existe un archivo .gitignore",
+            "El archivo .gitignore incluye una entrada que excluye tareas.json",
+            "El repositorio no incluye un tareas.json con datos de prueba versionado"
+          ]
+        }
+      ]
+    }
+  ],
+  "penalizaciones": [
+    {
+      "id": "P1",
+      "descripcion": "Repositorio privado o inaccesible al momento de la corrección.",
+      "descuento_porcentaje": 100
+    },
+    {
+      "id": "P2",
+      "descripcion": "Uso de librerías externas (instaladas vía pip), incumpliendo el requisito de usar solo la librería estándar.",
+      "descuento_porcentaje": 30
+    }
+  ],
+  "condiciones_desaprobacion": [
+    {
+      "id": "CD1",
+      "condicion": "Plagio detectado entre entregas.",
+      "nota_maxima": 0
+    },
+    {
+      "id": "CD2",
+      "condicion": "La app no se ejecuta siguiendo los pasos del README, por lo que no se puede evaluar la funcionalidad.",
+      "nota_maxima": 30
+    }
+  ]
+}
