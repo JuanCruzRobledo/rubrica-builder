@@ -21,19 +21,11 @@ Incluye un **validador** que replica las reglas del backend real: si pasa, el si
 
 ## 🚀 Instalación
 
-Cloná el repo dentro de tu carpeta de skills personales de Claude Code:
-
-**bash / macOS / Linux**
 ```bash
-git clone https://github.com/JuanCruzRobledo/rubrica-builder.git ~/.claude/skills/rubrica-builder
+npx skills add https://github.com/JuanCruzRobledo/rubrica-builder
 ```
 
-**PowerShell / Windows**
-```powershell
-git clone https://github.com/JuanCruzRobledo/rubrica-builder.git "$env:USERPROFILE\.claude\skills\rubrica-builder"
-```
-
-Listo. La próxima vez que abras Claude Code, la skill queda disponible y se activa sola cuando pidas armar, auditar o probar una rúbrica.
+La skill queda disponible para tu agente. Se carga automáticamente cuando le pidas crear, auditar o probar una rúbrica.
 
 ## 🛠️ Uso
 
