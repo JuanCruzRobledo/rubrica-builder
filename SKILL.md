@@ -31,6 +31,39 @@ Por eso toda la skill gira alrededor de una sola pregunta: **¿se puede corregir
 esta entrega con esta rúbrica, sin tener la consigna a mano?** Si la respuesta es
 no, la rúbrica está incompleta.
 
+## El principio que decide la granularidad (leé esto siempre)
+
+El puntaje vive en el **criterio** (`peso`). El **subcriterio NO puntúa**: es un
+checklist de evidencias que el corrector verifica, pero no tiene nota propia. De acá
+sale la regla de diseño más importante de toda la skill:
+
+> **Si un requisito necesita poder descontarse por sí solo, tiene que ser su PROPIO
+> criterio — no un subcriterio.**
+
+¿Por qué? Porque si metés varios requisitos independientes bajo un mismo criterio, el
+corrector tiene UNA sola palanca de nota para todos: ve el defecto de uno, lo comenta,
+pero no tiene de dónde restar sin castigar a los demás. Resultado: el defecto se
+menciona pero no baja la nota de forma consistente, y la corrección se vuelve
+**no-determinista** (el mismo trabajo saca notas distintas según el modelo).
+
+**El test de granularidad** — para cada requisito evaluable, preguntate:
+- *¿Necesito poder bajarle la nota a ESTO sin tocar lo demás?* → **criterio propio con `peso`**.
+- *¿Es solo una evidencia de verificación de algo más grande?* → **subcriterio**.
+
+Caso típico: en un modelo con varias relaciones/entidades/endpoints, cada uno que el
+profesor quiera poder penalizar por separado es un criterio, no una viñeta enterrada
+("una relación = un criterio", "un endpoint troncal = un criterio").
+
+**Pero no sobre-fragmentes.** Más criterios no es mejor por default: partir cosas
+triviales en muchos criterios de 1–2 puntos diluye la resolución de peso y vuelve la
+rúbrica ruidosa. El corte es por *palanca de descuento que el profesor realmente
+quiere* y que la consigna pondera — no por prurito de separar.
+
+**Refuerzo numérico:** cuando un criterio agrupa varios chequeos, usá
+`instrucciones_puntuacion` con reglas de descuento explícitas (ej: "falta X → techo
+N", "falta Y → 0"). Eso le da al corrector una regla que aplicar en vez de una
+interpretación libre.
+
 ## Antes de empezar: leé el modelo
 
 Leé `references/modelo-rubrica.md`. Es la fuente de verdad del esquema V2 (replica
@@ -77,10 +110,14 @@ Objetivo: traducir la consigna en una rúbrica completa y autosuficiente.
    requisito explícito del TP tiene que terminar reflejado en algún criterio o
    evidencia. Anclá todo en el texto: si no está en la consigna, no entra.
 
-2. **Agrupá en criterios** (apuntá a 3–8). Cada criterio es una dimensión coherente
-   (ej: "Endpoints CRUD", "Validaciones", "Documentación"). Asigná `peso` según la
-   importancia que la consigna le da a cada cosa — más peso a lo troncal. La suma
-   debe dar **exactamente 100**.
+2. **Agrupá en criterios según la granularidad de descuento, no un número fijo.**
+   Cada criterio es una **palanca de nota independiente** (ver "El principio que
+   decide la granularidad"). Aplicá el test a cada requisito: lo que el profesor
+   quiera poder penalizar por separado va como criterio propio; lo que es
+   verificación interna de algo más grande va como subcriterio. Como referencia
+   suele haber entre 4 y 12 criterios, pero el número lo dicta la cantidad de
+   palancas reales, no una cuota. Asigná `peso` según la importancia que la consigna
+   le da — más peso a lo troncal. La suma debe dar **exactamente 100**.
 
 3. **Bajá cada criterio a subcriterios con evidencias.** Las evidencias son el
    corazón de la corrección: afirmaciones binarias, verificables mirando SOLO la
@@ -115,20 +152,31 @@ completa respecto del TP, y autosuficiente para corregir. Revisá en este orden:
    estructura obligatoria, ejecución. Agregalos como criterios, subcriterios o
    evidencias. Esta es la falla más grave: lo omitido nunca se corrige.
 
-3. **Invenciones.** Criterios, concesiones o reglas que la rúbrica trae pero el TP
-   no respalda en ningún lado. Sacalos. La rúbrica no puede ser más blanda ni más
-   exigente que la consigna; debe ser su espejo fiel.
+3. **Requisitos diluidos (palanca de descuento ausente).** Buscá requisitos
+   importantes que SÍ están en la rúbrica pero metidos como subcriterio o evidencia
+   dentro de un criterio que agrupa varias cosas, sin peso propio. Si el profesor
+   necesita poder descontar ESE requisito por separado, promovelo a criterio (ver
+   "El principio que decide la granularidad"). Es el defecto más silencioso: la
+   rúbrica "lo cubre", pero el corrector no tiene de dónde restar y no penaliza
+   parejo. Al promover, reforzá con `instrucciones_puntuacion` numéricas.
 
-4. **Elementos visuales.** Si el TP tiene imágenes/tablas/esquemas que importan para
+4. **Invenciones.** Criterios, concesiones o reglas que la rúbrica trae pero el TP
+   no respalda en ningún lado. Sacalos. La rúbrica no puede ser más blanda ni más
+   exigente que la consigna; debe ser su espejo fiel. (Ojo el doble filo: tampoco
+   metas evidencias que el corrector NO puede verificar mirando solo la entrega —ej:
+   "entregó el video", "el repo es público"—; alucina. Si no es verificable en el
+   material que recibe, no va como evidencia puntuable.)
+
+5. **Elementos visuales.** Si el TP tiene imágenes/tablas/esquemas que importan para
    evaluar y la rúbrica no los refleja en texto, incorporalos.
 
-5. **Ajuste de pesos.** Si agregaste o sacaste criterios, recalculá los `peso` para
+6. **Ajuste de pesos.** Si agregaste o sacaste criterios, recalculá los `peso` para
    que la suma vuelva a ser exactamente 100. Respetá la importancia relativa que da
    la consigna.
 
-6. **Validá** con el script.
+7. **Validá** con el script.
 
-7. **Entregá** con el formato de salida (incluyendo el resumen de hallazgos).
+8. **Entregá** con el formato de salida (incluyendo el resumen de hallazgos).
 
 ---
 
@@ -235,6 +283,13 @@ Mirá `assets/ejemplo-rubrica.json` como molde de una rúbrica V2 completa y vá
 - Evidencias subjetivas o que piden info fuera de la entrega ("está prolijo").
 - Inventar penalizaciones/condiciones que la consigna no menciona.
 - Dejar requisitos del TP sin ningún criterio que los cubra.
+- **Requisitos importantes diluidos** como subcriterio/evidencia sin peso propio: el
+  corrector los ve pero no tiene palanca para descontarlos → corrección
+  no-determinista. Si hay que poder penalizarlo solo, es un criterio (ver "El
+  principio que decide la granularidad").
+- **Sobre-fragmentar** lo trivial en muchos criterios de 1–2 puntos: diluye la
+  resolución de peso y vuelve la rúbrica ruidosa. Partí por palanca real, no por
+  prurito.
 - Usar `nota_final` en vez de `nota_maxima`, o `puntaje_maximo` por criterio en vez
   de `peso` (eso es el modelo V1 muerto).
 - Meter `materia_id`/`tipo`/`numero`/`anio` dentro del JSON de criterios: van en el

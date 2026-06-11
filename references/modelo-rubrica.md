@@ -52,6 +52,12 @@ SOLO el objeto `CriteriosStructure`. Los campos de nivel rúbrica
 > del alumno (ej: "El archivo `package.json` existe", "Se define la ruta `GET /productos`").
 > Evitá evidencias subjetivas o que requieran info externa al código entregado.
 
+> ⚠️ **Consecuencia de diseño (clave):** el subcriterio **NO tiene nota propia** —
+> solo el criterio puntúa (`peso`). El subcriterio es un checklist de evidencias.
+> Por eso, si un requisito necesita poder **descontarse por sí solo**, tiene que ser
+> un **CRITERIO**, no un subcriterio. Ver "El principio que decide la granularidad"
+> en `SKILL.md`.
+
 ### `penalizaciones[]` — Penalización (opcional)
 
 | Campo | Tipo | Obligatorio | Regla |
