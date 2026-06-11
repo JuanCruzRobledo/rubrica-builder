@@ -4,6 +4,8 @@
 
 Una rúbrica no sirve solo para verse prolija: tiene que ser **autosuficiente**. Cuando el sistema corrige, el modelo ve únicamente la rúbrica y la entrega del alumno — nunca la consigna original. Si un requisito no quedó escrito en la rúbrica, no se evalúa. Esta skill se asegura de que eso no pase.
 
+Y un segundo pilar, igual de importante: **el puntaje vive en el criterio** (`peso`); el subcriterio no puntúa, es checklist. Por eso, si un requisito necesita poder **descontarse por sí solo**, va como criterio propio — no enterrado en un subcriterio sin palanca de nota. La skill aplica ese **test de granularidad** al crear y al auditar, para que la corrección sea **determinista** (que el mismo trabajo no saque notas distintas según el modelo).
+
 ## ✨ Qué hace
 
 | Modo | Para qué | Entrada |
