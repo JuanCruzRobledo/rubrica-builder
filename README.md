@@ -1,6 +1,6 @@
 # Rúbrica Builder
 
-> Skill de [Claude Code](https://claude.com/claude-code) para **crear, auditar y testear** rúbricas de evaluación autosuficientes del sistema **Active-IA** (corrección automática de TPs con IA).
+> Skill de [Claude Code](https://claude.com/claude-code) para **curar consignas, y crear, auditar y testear** rúbricas de evaluación autosuficientes del sistema **Active-IA** (corrección automática de TPs con IA).
 
 Una rúbrica no sirve solo para verse prolija: tiene que ser **autosuficiente**. Cuando el sistema corrige, el modelo ve únicamente la rúbrica y la entrega del alumno — nunca la consigna original. Si un requisito no quedó escrito en la rúbrica, no se evalúa. Esta skill se asegura de que eso no pase.
 
@@ -10,6 +10,7 @@ Y un segundo pilar, igual de importante: **el puntaje vive en el criterio** (`pe
 
 | Modo | Para qué | Entrada |
 |------|----------|---------|
+| **CURAR** | Detecta requisitos de la consigna que rompen el flujo de corrección de la IA (links, videos, imágenes en TP de código, deploy, código+PDF juntos) y los adapta a un solo flujo, los deriva a corrección manual o los saca de la rúbrica — reescribiendo la consigna sin perder la intención | la consigna |
 | **CREAR** | Traduce una consigna en una rúbrica completa y válida | la consigna |
 | **AUDITAR** | Revisa una rúbrica existente: detecta contradicciones, omisiones e invenciones, y reajusta pesos a 100 | consigna + rúbrica |
 | **TEST** | Simula la corrección real (consolidación + prompt del workflow) localmente con el CLI de Claude, para ver qué nota y feedback produce antes de subirla | rúbrica + entrega |
@@ -31,12 +32,15 @@ La skill queda disponible para tu agente. Se carga automáticamente cuando le pi
 
 ## 🛠️ Uso
 
-### CREAR y AUDITAR (dentro de Claude Code)
+### CURAR, CREAR y AUDITAR (dentro de Claude Code)
 
 Solo describí lo que necesitás y pasá el material; la skill se activa automáticamente:
 
+- *"Revisá si esta consigna se puede corregir con la IA"* / *"curá este TP"* + la consigna → **CURAR**
 - *"Armá la rúbrica de evaluación para este TP"* + la consigna → **CREAR**
 - *"Revisá si esta rúbrica cubre todo lo que pide el parcial"* + consigna + rúbrica → **AUDITAR**
+
+**CURAR** corre antes de CREAR: detecta los puntos de la consigna que rompen el flujo de corrección (un link de repo, una imagen en un TP de código, un video, código + informe PDF juntos), te propone para cada uno **adaptarlo** a un solo flujo (ej: *"adjuntá una imagen de la salida"* → *"imprimí la salida por pantalla"*), **dejarlo para corrección manual** o **sacarlo de la rúbrica** —preguntándote con una recomendación—, y te devuelve la **consigna reescrita** lista para CREAR.
 
 La skill entrega el JSON listo para el botón **"Cargar criterios"** de Active-IA, más los campos (`tipo`, `numero`, `anio`) para completar en el formulario.
 
@@ -63,12 +67,13 @@ Esto consolida la entrega, arma el prompt de corrección con la rúbrica complet
 
 ```
 rubrica-builder/
-├── SKILL.md                       # definición de la skill (3 modos)
+├── SKILL.md                       # definición de la skill (4 modos)
 ├── scripts/
 │   ├── validar_rubrica.py         # valida la estructura V2 (espejo del backend)
 │   └── simular_correccion.py      # modo TEST: corrección local con claude
 ├── references/
-│   └── modelo-rubrica.md          # modelo de rúbrica V2 (fuente de verdad)
+│   ├── modelo-rubrica.md          # modelo de rúbrica V2 (fuente de verdad)
+│   └── limites-corrector.md       # qué puede y qué NO evaluar la IA (modo CURAR)
 ├── assets/
 │   └── ejemplo-rubrica.json       # rúbrica V2 completa de ejemplo
 └── examples/

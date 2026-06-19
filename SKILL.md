@@ -1,21 +1,29 @@
 ---
 name: rubrica-builder
 description: >-
-  Crea y audita rúbricas de evaluación autosuficientes para Active-IA a partir
-  de la consigna de cualquier entrega (TP, parcial, recuperatorio, final o
-  global). En modo CREAR genera el JSON de criterios listo para el botón
-  "Cargar criterios"; en modo AUDITAR recibe consigna + rúbrica existente y la
-  corrige detectando contradicciones, omisiones e invenciones, reajustando
-  pesos a 100. En modo TEST simula la corrección real (consolidación + prompt
-  del workflow N8N→Gemini) localmente con el CLI de Claude, para ver qué nota y
-  feedback produce la rúbrica sobre una entrega antes de subirla. Usá esta skill
-  SIEMPRE que el usuario quiera armar, generar, diseñar, revisar, auditar,
-  validar o PROBAR/TESTEAR una rúbrica o sus criterios de evaluación —aunque no
-  diga la palabra "rúbrica" explícitamente (ej: "armá los criterios para este
-  TP", "revisá si esta evaluación cubre todo lo que pide el parcial", "esta
-  rúbrica está bien?", "probá cómo corrige esta rúbrica con esta entrega").
-  NO usar para corregir entregas reales de alumnos en producción (eso es la
-  skill `corregir`); el modo TEST es solo un ensayo local.
+  Crea, cura y audita rúbricas de evaluación autosuficientes para Active-IA a
+  partir de la consigna de cualquier entrega (TP, parcial, recuperatorio, final
+  o global). En modo CURAR analiza la consigna ANTES de armar la rúbrica y
+  detecta requisitos que rompen el flujo de corrección de la IA (links de repo,
+  videos, imágenes en un TP de código, "el deploy anda", informe PDF + código
+  juntos), proponiendo para cada uno adaptarlo a un solo flujo —código O PDF—,
+  dejarlo para corrección manual o sacarlo de la rúbrica, y reescribe la
+  consigna curada sin perder la intención. En modo CREAR genera el JSON de
+  criterios listo para el botón "Cargar criterios"; en modo AUDITAR recibe
+  consigna + rúbrica existente y la corrige detectando contradicciones,
+  omisiones e invenciones, reajustando pesos a 100. En modo TEST simula la
+  corrección real (consolidación + prompt del workflow N8N→Gemini) localmente
+  con el CLI de Claude, para ver qué nota y feedback produce la rúbrica sobre
+  una entrega antes de subirla. Usá esta skill SIEMPRE que el usuario quiera
+  armar, generar, diseñar, curar, adaptar, revisar, auditar, validar o
+  PROBAR/TESTEAR una rúbrica, una consigna o sus criterios de evaluación —aunque
+  no diga la palabra "rúbrica" explícitamente (ej: "armá los criterios para este
+  TP", "revisá si esta consigna se puede corregir con la IA", "esta consigna
+  pide una foto y es un TP de código", "curá este TP", "revisá si esta
+  evaluación cubre todo lo que pide el parcial", "esta rúbrica está bien?",
+  "probá cómo corrige esta rúbrica con esta entrega"). NO usar para corregir
+  entregas reales de alumnos en producción (eso es la skill `corregir`); el modo
+  TEST es solo un ensayo local.
 ---
 
 # Rúbrica Builder — crear y auditar rúbricas autosuficientes
@@ -67,7 +75,10 @@ interpretación libre.
 ## Antes de empezar: leé el modelo
 
 Leé `references/modelo-rubrica.md`. Es la fuente de verdad del esquema V2 (replica
-el Pydantic real). Tené presente las tres trampas del repo:
+el Pydantic real). Y si vas a curar una consigna (o crear una rúbrica), leé también
+`references/limites-corrector.md`: documenta qué puede y qué NO puede evaluar el
+corrector (links, imágenes, ejecución, un solo flujo código/PDF), espejo del servicio
+real de consolidación. Tené presente las tres trampas del repo:
 - `docs/specs/Rubrica.md` usa `nota_final` → **mal**, es `nota_maxima`.
 - la skill vieja `skills/rubricas/` usa `puntaje_maximo` por criterio y no tiene
   subcriterios → **modelo V1 muerto, ignorala**.
@@ -77,6 +88,7 @@ el Pydantic real). Tené presente las tres trampas del repo:
 
 | Modo | Necesitás |
 |------|-----------|
+| **CURAR** | La **consigna** completa + (opcional) el **formato de entrega** real (código o PDF). |
 | **CREAR** | La **consigna** completa de la entrega (texto, PDF, imágenes, tablas). |
 | **AUDITAR** | La **consigna** + la **rúbrica existente** (JSON) a revisar. |
 | **TEST** | La **rúbrica** (JSON) + una **entrega** de alumno (archivo, carpeta, .zip o .txt). |
@@ -92,10 +104,106 @@ la rúbrica. Lo que no esté en texto, no existe.
 
 ## Detectar el modo
 
-- Solo consigna → **CREAR**.
+- Consigna + pedido de **revisar si se puede corregir / curar / adaptar la
+  consigna** ("¿esto lo corrige la IA?", "curá este TP", "pide una foto y es de
+  código") → **CURAR**.
+- Solo consigna, pedido de **armar la rúbrica/criterios** → **CREAR**.
 - Consigna + un JSON de rúbrica → **AUDITAR**.
 - Rúbrica + una entrega de alumno (probar/testear) → **TEST**.
-- Ante la duda, preguntá cuál de los tres quiere.
+- Ante la duda, preguntá cuál de los cuatro quiere.
+
+CURAR es el paso de aguas arriba: corre sobre la consigna ANTES de CREAR. Si al
+crear una rúbrica detectás un requisito que rompe el flujo de corrección (ver
+"Modo CURAR"), no escribas el criterio fantasma en silencio: frená y curá ese
+punto primero.
+
+---
+
+## Modo CURAR — adaptar la consigna al flujo de corrección
+
+Antes de armar la rúbrica, una pregunta que nadie suele hacerse: **¿esta consigna se
+puede corregir con la IA tal como está?** Porque el corrector tiene límites duros
+(leé `references/limites-corrector.md`): no abre links, descarta imágenes en modos de
+código, corrige **un solo flujo —código O PDF—** y no ejecuta nada. Si la consigna le
+pide algo de eso, por más fiel que sea la rúbrica, ese punto no se corrige. CURAR
+detecta esos puntos y los resuelve **sin perder la intención del trabajo**.
+
+La meta NO es mutilar la consigna. Es **mantener un solo flujo de corrección** y, donde
+se pueda, adaptar el requisito para que entre en ese flujo conservando el objetivo
+pedagógico. Lo que no se puede adaptar no se borra: se mantiene y se marca para
+corrección manual.
+
+### Distinción clave: consigna ≠ rúbrica
+
+- **La consigna NUNCA pierde algo importante.** Se adapta o se mantiene tal cual.
+- **La rúbrica es la que no incluye lo incorregible.** "Sacar" aplica SOLO a la
+  rúbrica: lo que la IA no puede evaluar no se escribe como criterio. La consigna lo
+  conserva igual.
+
+### Los tres destinos de un punto que rompe el flujo
+
+1. **ADAPTAR (preferido).** Reescribí el requisito para que viva dentro del flujo único
+   y siga siendo IA-corregible, conservando la intención. Ejemplos:
+   - *"Entregá el link del repositorio"* → *"Entregá un `.zip` del proyecto y que el
+     `README` incluya la URL del repo, para chequear que se subió."*
+   - *"Adjuntá una imagen de la salida del programa"* → *"Imprimí esa salida por
+     pantalla / dejá el output en un `.txt` dentro del proyecto."*
+   - *"Mostrá el diagrama de la arquitectura"* → *"Describí la arquitectura en el
+     `README` o en comentarios del código."*
+   - *"El deploy tiene que estar online"* → *"Incluí el código del deploy y un
+     `README` con los pasos; la evidencia se verifica sobre el código."*
+
+2. **MANTENER + CORRECCIÓN MANUAL.** Si el punto es importante pero NO se puede adaptar
+   sin romper el flujo (caso típico: un **video** de defensa), se queda **igual en la
+   consigna** —no se cura— y el informe lo marca: *"esto la IA no lo corrige; queda en
+   la consigna, se corrige a mano, NO entra en la rúbrica."* (El video de defensa, de
+   hecho, tiene su propio canal: la skill `active-ia-video-feedback`.)
+
+3. **SACAR (solo de la rúbrica).** Si es accesorio para la nota (un link decorativo, un
+   zip de entrega), simplemente no se escribe como criterio. La consigna lo mantiene.
+
+### El flujo es conversacional
+
+CURAR no decide solo los casos que importan. Trabajá así:
+
+1. **Detectá** todos los puntos de la consigna que rompen el flujo (cotejá contra
+   `references/limites-corrector.md`). Anclá cada uno en una cita de la consigna.
+2. **Decidí el flujo primario** —código o PDF— según lo que la consigna pide. Si la
+   consigna mezcla código + informe PDF y no está claro, **preguntá** cuál es el canal.
+3. **Para cada punto, proponé una cura con recomendación concreta y preguntá** qué
+   hacer. Ejemplo:
+   > *"El formato de entrega pide un link y eso rompe el flujo. Yo recomendaría pedir
+   > un `.zip` y que el `README` muestre el repo, así se chequea que se subió. ¿Lo
+   > adaptamos así, lo dejás para corrección manual, o lo sacamos?"*
+4. **Aplicá lo que el usuario decida** y pasá al siguiente punto.
+5. **Entregá** el informe de curado + la consigna reescrita (ver formato abajo).
+
+Si no hay nada que rompe el flujo, decilo: la consigna es corregible tal cual, no hace
+falta curar. No inventes problemas.
+
+### Formato de salida de CURAR
+
+**1. Informe de curado** — por cada punto detectado:
+```
+## Curado de la consigna
+
+Flujo de corrección recomendado: <código (solo_codigo / web_completo / proyecto_completo) | PDF>
+
+- [<ADAPTADO | MANUAL | SACADO-DE-RÚBRICA>] <qué pide la consigna, citado>
+  - Por qué rompe el flujo: <límite estructural concreto>
+  - Cura aplicada: <qué se hizo y, si adaptado, cómo quedó el texto>
+- ... (un ítem por punto)
+
+Veredicto: <corregible tal cual | corregible con estos ajustes | requiere corrección
+manual de algunos puntos>
+```
+
+**2. Consigna reescrita** — el texto curado completo, en un bloque, fiel a la intención
+original, con los puntos ADAPTADOS ya reexpresados y los MANUALES marcados como "se
+corrige a mano". Listo para pasárselo a **CREAR**.
+
+Cuando el usuario quiera, encadená con **CREAR** sobre la consigna ya curada: así la
+rúbrica que sale es 100% corregible en un solo flujo.
 
 ---
 
