@@ -19,6 +19,7 @@
         {
           "id": "C1.1",
           "descripcion": "package.json con las dependencias exigidas (express, cors, dotenv).",
+          "peso": 12,
           "evidencias": [
             "El archivo package.json existe en la raíz",
             "La dependencia express está declarada",
@@ -29,6 +30,7 @@
         {
           "id": "C1.2",
           "descripcion": "Estructura de carpetas separada en routes, controllers y models.",
+          "peso": 8,
           "evidencias": [
             "Existe la carpeta src/",
             "Existen subcarpetas routes/, controllers/ y models/",
@@ -47,6 +49,7 @@
         {
           "id": "C2.1",
           "descripcion": "POST /productos crea un producto y devuelve 201.",
+          "peso": 15,
           "evidencias": [
             "Existe la ruta POST /productos",
             "El handler persiste el producto",
@@ -56,6 +59,7 @@
         {
           "id": "C2.2",
           "descripcion": "GET /productos y GET /productos/:id devuelven datos correctamente.",
+          "peso": 15,
           "evidencias": [
             "Existe la ruta GET /productos que lista productos",
             "Existe la ruta GET /productos/:id que devuelve uno",
@@ -65,6 +69,7 @@
         {
           "id": "C2.3",
           "descripcion": "PUT y DELETE sobre /productos/:id funcionan.",
+          "peso": 15,
           "evidencias": [
             "Existe la ruta PUT /productos/:id que actualiza",
             "Existe la ruta DELETE /productos/:id que elimina",
@@ -82,6 +87,7 @@
         {
           "id": "C3.1",
           "descripcion": "Las entradas inválidas son rechazadas con 400.",
+          "peso": 20,
           "evidencias": [
             "Crear un producto sin campos obligatorios responde 400",
             "El mensaje de error indica qué campo falta"
@@ -98,6 +104,7 @@
         {
           "id": "C4.1",
           "descripcion": "README con pasos de instalación y ejecución.",
+          "peso": 15,
           "evidencias": [
             "Existe un archivo README",
             "Incluye el comando de instalación de dependencias",

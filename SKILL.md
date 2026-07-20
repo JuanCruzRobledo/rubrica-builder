@@ -41,48 +41,61 @@ no, la rúbrica está incompleta.
 
 ## El principio que decide la granularidad (leé esto siempre)
 
-El puntaje vive en el **criterio** (`peso`). El **subcriterio NO puntúa**: es un
-checklist de evidencias que el corrector verifica, pero no tiene nota propia. De acá
-sale la regla de diseño más importante de toda la skill:
+Esta skill genera rúbricas **v2** por defecto: el puntaje ya no vive solo en el
+**criterio** (`peso`) — el **subcriterio también tiene `peso` propio**, y la suma de
+los pesos de los subcriterios de un criterio debe dar exactamente el `peso` de ese
+criterio (ver `references/modelo-rubrica.md`). Sigue existiendo el modelo viejo, v1
+(subcriterios sin `peso`, puro checklist), para rúbricas ya cargadas — pero lo que
+generás vos, siempre que puedas, es v2.
 
-> **Si un requisito necesita poder descontarse por sí solo, tiene que ser su PROPIO
-> criterio — no un subcriterio.**
+Como el subcriterio ahora también puntúa, la vieja regla ("si necesita descontarse
+solo, promovelo a criterio") ya no es la palanca correcta: un subcriterio con `peso`
+propio YA es una palanca de descuento independiente. La pregunta que decide la
+granularidad pasa a ser otra:
 
-¿Por qué? Porque si metés varios requisitos independientes bajo un mismo criterio, el
-corrector tiene UNA sola palanca de nota para todos: ve el defecto de uno, lo comenta,
-pero no tiene de dónde restar sin castigar a los demás. Resultado: el defecto se
-menciona pero no baja la nota de forma consistente, y la corrección se vuelve
-**no-determinista** (el mismo trabajo saca notas distintas según el modelo).
+> **¿Es un área/dimensión distinta de evaluación (ortogonal a las demás)? → criterio
+> propio. ¿Es un requisito específico y granular DENTRO del área que ya cubre un
+> criterio? → subcriterio con su propio `peso`, aunque merezca descontarse solo.**
 
 **El test de granularidad** — para cada requisito evaluable, preguntate:
-- *¿Necesito poder bajarle la nota a ESTO sin tocar lo demás?* → **criterio propio con `peso`**.
-- *¿Es solo una evidencia de verificación de algo más grande?* → **subcriterio**.
+- *¿Es una dimensión/área de evaluación distinta de las demás (otro aspecto del
+  trabajo, no un detalle de uno ya existente)?* → **criterio propio con `peso`**.
+- *¿Es un requisito puntual dentro del área que ya cubre un criterio, aunque merezca
+  su propio descuento?* → **subcriterio con `peso` propio** (v2) o evidencia (v1).
 
-Caso típico: en un modelo con varias relaciones/entidades/endpoints, cada uno que el
-profesor quiera poder penalizar por separado es un criterio, no una viñeta enterrada
-("una relación = un criterio", "un endpoint troncal = un criterio").
+Caso típico: en un TP con "Endpoints CRUD" como área/criterio, cada operación
+(POST, GET, PUT, DELETE) NO es un área distinta — es un requisito específico dentro
+de esa área → subcriterio con `peso`, no criterio nuevo. En cambio "Persistencia en
+base de datos" sí es un área ortogonal a "Endpoints CRUD" → criterio propio.
 
 **Pero no sobre-fragmentes.** Más criterios no es mejor por default: partir cosas
 triviales en muchos criterios de 1–2 puntos diluye la resolución de peso y vuelve la
-rúbrica ruidosa. El corte es por *palanca de descuento que el profesor realmente
-quiere* y que la consigna pondera — no por prurito de separar.
+rúbrica ruidosa. El corte es por *área real que la consigna distingue* — no por
+prurito de separar, y no por "esto necesita su propio descuento" (eso ya lo resuelve
+el `peso` del subcriterio en v2).
 
-**Refuerzo numérico:** cuando un criterio agrupa varios chequeos, usá
-`instrucciones_puntuacion` con reglas de descuento explícitas (ej: "falta X → techo
-N", "falta Y → 0"). Eso le da al corrector una regla que aplicar en vez de una
-interpretación libre.
+**Refuerzo numérico:** cuando un criterio agrupa varios subcriterios, usá
+`instrucciones_puntuacion` como nota complementaria no vinculante (ej: "penalizar
+doble si falta manejo de errores") — el reparto de puntaje entre subcriterios ya lo
+dice el `peso` de cada uno, no hace falta describirlo en texto.
 
 ## Antes de empezar: leé el modelo
 
-Leé `references/modelo-rubrica.md`. Es la fuente de verdad del esquema V2 (replica
-el Pydantic real). Y si vas a curar una consigna (o crear una rúbrica), leé también
+Leé `references/modelo-rubrica.md`. Es la fuente de verdad del esquema (replica el
+Pydantic real) y documenta **ambas versiones**: v1 (subcriterios sin `peso`, para
+rúbricas ya cargadas) y v2 (subcriterios con `peso` propio, la que esta skill genera
+por defecto). Y si vas a curar una consigna (o crear una rúbrica), leé también
 `references/limites-corrector.md`: documenta qué puede y qué NO puede evaluar el
 corrector (links, imágenes, ejecución, un solo flujo código/PDF), espejo del servicio
-real de consolidación. Tené presente las tres trampas del repo:
+real de consolidación. Tené presente las trampas del repo:
 - `docs/specs/Rubrica.md` usa `nota_final` → **mal**, es `nota_maxima`.
 - la skill vieja `skills/rubricas/` usa `puntaje_maximo` por criterio y no tiene
-  subcriterios → **modelo V1 muerto, ignorala**.
+  subcriterios → **modelo muerto y distinto tanto de v1 como de v2, ignorala**.
 - el peso del criterio es `peso` (no `puntaje_maximo`), y la suma debe dar 100.
+- `schema_version` NO va dentro del JSON de criterios: es un campo aparte del
+  formulario. Lo que marca una rúbrica como v2 es la presencia de `peso` en los
+  subcriterios — nunca escribas `schema_version` en el JSON (ver "Formato de
+  salida").
 
 ## Inputs que necesitás
 
@@ -227,11 +240,19 @@ Objetivo: traducir la consigna en una rúbrica completa y autosuficiente.
    palancas reales, no una cuota. Asigná `peso` según la importancia que la consigna
    le da — más peso a lo troncal. La suma debe dar **exactamente 100**.
 
-3. **Bajá cada criterio a subcriterios con evidencias.** Las evidencias son el
-   corazón de la corrección: afirmaciones binarias, verificables mirando SOLO la
-   entrega. "Existe la ruta `POST /productos`" es buena evidencia; "el código está
-   bien escrito" no lo es (subjetiva, no verificable). Cada subcriterio necesita
-   ≥1 evidencia.
+3. **Bajá cada criterio a subcriterios con evidencias y `peso` propio (v2).** Las
+   evidencias son el corazón de la corrección: afirmaciones binarias, verificables
+   mirando SOLO la entrega. "Existe la ruta `POST /productos`" es buena evidencia;
+   "el código está bien escrito" no lo es (subjetiva, no verificable). Cada
+   subcriterio necesita ≥1 evidencia. Además, asignále un `peso` a cada subcriterio
+   de forma que la suma cierre **exacto** con el `peso` del criterio padre:
+   - Si la consigna o la importancia relativa de cada subcriterio te da una
+     ponderación clara, usala.
+   - Si no hay ponderación clara, repartí en partes iguales con el **método del
+     resto mayor (Hamilton)**: `base = floor(peso_criterio / n)`,
+     `resto = peso_criterio - base * n`; los primeros `resto` subcriterios (en
+     orden) reciben `base + 1`, el resto recibe `base`. Ejemplo: criterio de
+     `peso: 25` con 3 subcriterios → `base=8`, `resto=1` → `9, 8, 8` (suma 25).
 
 4. **Penalizaciones y condiciones de desaprobación.** Si la consigna establece
    castigos (repo privado, no compila) o reglas que tumban la nota (plagio, falta un
@@ -260,13 +281,25 @@ completa respecto del TP, y autosuficiente para corregir. Revisá en este orden:
    estructura obligatoria, ejecución. Agregalos como criterios, subcriterios o
    evidencias. Esta es la falla más grave: lo omitido nunca se corrige.
 
-3. **Requisitos diluidos (palanca de descuento ausente).** Buscá requisitos
-   importantes que SÍ están en la rúbrica pero metidos como subcriterio o evidencia
-   dentro de un criterio que agrupa varias cosas, sin peso propio. Si el profesor
-   necesita poder descontar ESE requisito por separado, promovelo a criterio (ver
-   "El principio que decide la granularidad"). Es el defecto más silencioso: la
-   rúbrica "lo cubre", pero el corrector no tiene de dónde restar y no penaliza
-   parejo. Al promover, reforzá con `instrucciones_puntuacion` numéricas.
+3. **Requisitos diluidos.** En v2 la dilución real ya no es "subcriterio sin
+   peso propio" (eso el modelo lo resuelve solo): es otra cosa. Revisá:
+   - **Área mal ubicada:** un requisito que es una dimensión de evaluación
+     distinta (ver "El principio que decide la granularidad") está enterrado
+     como subcriterio de un criterio que no le corresponde → promovelo a
+     criterio propio y reajustá pesos.
+   - **Peso de subcriterio mal repartido:** un subcriterio importante quedó con
+     un `peso` chico dentro de un criterio grande, sin reflejar su peso real en
+     la consigna (ej: repartiste en partes iguales cuando la consigna pondera
+     distinto) → reajustá los pesos entre subcriterios (deben seguir sumando el
+     `peso` del criterio).
+   - **Remanente sin desglosar:** un criterio grande con un solo subcriterio que
+     absorbe todo el `peso` cuando en realidad agrupa varios requisitos
+     independientes que convendría desglosar en más subcriterios con `peso`
+     propio, para que el corrector tenga granularidad real al puntuar.
+   - Si la rúbrica que estás auditando es v1 (subcriterios sin `peso`), seguí
+     aplicando la lógica vieja: promové a criterio lo que necesite descontarse
+     solo. No conviertas una rúbrica v1 a v2 de prepo — la migración la decide
+     el usuario (ver "Formato de salida").
 
 4. **Invenciones.** Criterios, concesiones o reglas que la rúbrica trae pero el TP
    no respalda en ningún lado. Sacalos. La rúbrica no puede ser más blanda ni más
@@ -331,6 +364,14 @@ La corrección usa la rúbrica **COMPLETA**: por cada criterio manda `id`, `nomb
 evidencias**, más las `penalizaciones`, las `condiciones_desaprobacion` y la
 `metadata`. Por eso las evidencias importan: son el checklist que el modelo verifica.
 
+En **v2**, además manda el `peso` de cada subcriterio, y el resultado de la
+corrección trae un desglose `subcriterios_evaluados` por criterio (puntaje,
+estado y feedback por subcriterio, cuya suma debe dar el `puntaje_obtenido` del
+criterio). En **v1** no hay `peso` de subcriterio ni `subcriterios_evaluados` en
+la respuesta — sigue igual que siempre. `scripts/simular_correccion.py` infiere
+la versión igual que hace el validador (por presencia de `peso` en subcriterios)
+y ajusta el prompt y la validación del resultado en consecuencia.
+
 Recomendación de robustez: redactá la `descripcion` de cada criterio de forma
 autosuficiente —que resuma lo que sus evidencias verifican—, así la corrección
 funciona bien aun si una integración llegara a enviar menos contexto del esperado.
@@ -353,6 +394,13 @@ evidencias vacías, `nota_final` vs `nota_maxima`, etc.). **No entregues una rú
 sin que el validador la dé por buena.** Si falla, arreglá y volvé a correrlo. Es
 barato y te ahorra el rebote del backend.
 
+El validador soporta **v1 y v2** e infiere cuál es por presencia de `peso` en los
+subcriterios (igual que el frontend de Active-IA) — no hace falta pasarle
+`schema_version`. En v2 exige `peso` en cada subcriterio y que la suma cierre exacto
+con el `peso` del criterio; en v1 no lo exige. Si necesitás forzar la versión (por
+ejemplo para probar el comportamiento v1 explícitamente), usá
+`--schema-version 1|2`.
+
 ## Formato de salida
 
 ALWAYS entregá en este orden:
@@ -369,7 +417,10 @@ ALWAYS entregá en este orden:
 **2. El JSON de `CriteriosStructure`** — en un bloque ```json, listo para pegar en
 el botón "Cargar criterios". Contiene exactamente: `titulo`, `descripcion`,
 `puntaje_maximo`, `metadata`, `criterios`, `penalizaciones`,
-`condiciones_desaprobacion`. Nada más.
+`condiciones_desaprobacion`. Nada más. **No incluyas `schema_version`** en este
+JSON: es un campo aparte del payload de la rúbrica (como `tipo`/`numero`/`anio`),
+no de `CriteriosStructure`. Lo que marca la rúbrica como v2 es el `peso` en cada
+subcriterio — el front de Active-IA lo infiere solo.
 
 **3. Campos para el formulario** — los que NO van en el JSON y se tipean aparte:
 ```
@@ -382,7 +433,9 @@ Para completar en el formulario de la rúbrica:
 
 **4. Confirmación del validador** — pegá la línea de "✅ RÚBRICA VÁLIDA".
 
-Mirá `assets/ejemplo-rubrica.json` como molde de una rúbrica V2 completa y válida.
+Mirá `assets/ejemplo-rubrica.json` como molde de una rúbrica v2 completa y válida
+(con `peso` por subcriterio). Para retrocompatibilidad, `examples/rubrica-tp-cli-v1.json`
+es un ejemplo v1 (sin `peso` en subcriterios).
 
 ## Errores que arruinan una rúbrica (evitalos)
 
@@ -391,10 +444,12 @@ Mirá `assets/ejemplo-rubrica.json` como molde de una rúbrica V2 completa y vá
 - Evidencias subjetivas o que piden info fuera de la entrega ("está prolijo").
 - Inventar penalizaciones/condiciones que la consigna no menciona.
 - Dejar requisitos del TP sin ningún criterio que los cubra.
-- **Requisitos importantes diluidos** como subcriterio/evidencia sin peso propio: el
-  corrector los ve pero no tiene palanca para descontarlos → corrección
-  no-determinista. Si hay que poder penalizarlo solo, es un criterio (ver "El
-  principio que decide la granularidad").
+- **Requisitos importantes diluidos**: un área/dimensión de evaluación distinta
+  enterrada como subcriterio de un criterio que no le corresponde, en vez de
+  criterio propio (ver "El principio que decide la granularidad").
+- **(v2) Subcriterios sin `peso` o cuya suma no cierra** con el `peso` del
+  criterio padre — el validador lo caza, pero pensalo desde el reparto (Hamilton
+  si no hay ponderación clara en la consigna).
 - **Sobre-fragmentar** lo trivial en muchos criterios de 1–2 puntos: diluye la
   resolución de peso y vuelve la rúbrica ruidosa. Partí por palanca real, no por
   prurito.

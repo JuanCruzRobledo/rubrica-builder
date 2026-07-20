@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validador autónomo de rúbricas Active-IA (modelo V2).
+Validador autónomo de rúbricas Active-IA (modelo v1 y v2).
 
 Replica EXACTAMENTE las reglas del schema Pydantic real
 (backend/app/schemas/rubrica.py -> CriteriosStructure y sus hijos)
@@ -10,9 +10,18 @@ Si este validador pasa, el backend acepta la rúbrica. Si falla, la rebota.
 Esa es la única razón por la que este script existe: cerrar el loop antes
 de que el JSON llegue al sistema y te explote en la cara.
 
+schema_version (v1 = subcriterios sin peso propio, v2 = subcriterios con
+`peso` obligatorio que debe sumar exacto al `peso` del criterio) NO viaja
+dentro del JSON de CriteriosStructure -- es un campo aparte del payload de
+la rúbrica (hermano de tipo/numero/anio), y el front de Active-IA lo infiere
+por presencia de `peso` en los subcriterios. Este validador hace lo mismo:
+si algún subcriterio de la rúbrica trae `peso`, la trata como v2 completa.
+
 Uso:
     python validar_rubrica.py <ruta_al_json>
     python validar_rubrica.py -          # lee el JSON desde stdin
+    python validar_rubrica.py <ruta_al_json> --schema-version 1|2
+        # fuerza la versión en vez de inferirla por presencia de `peso`
 
 Salida:
     Exit 0  -> rúbrica válida (lista para "Cargar criterios")
@@ -71,10 +80,13 @@ class Validador:
         return True
 
     # -- validación principal ----------------------------------------------
-    def validar(self, data) -> None:
+    def validar(self, data, schema_version: int | None = None) -> int:
+        """Valida `data` y devuelve la schema_version efectivamente usada
+        (la forzada por `schema_version`, o la inferida por presencia de
+        `peso` en subcriterios si no se forzó ninguna)."""
         if not isinstance(data, dict):
             self.err("raíz", "El JSON de la rúbrica debe ser un objeto (diccionario).")
-            return
+            return schema_version or 1
 
         self._str_no_vacio(data.get("titulo"), "raíz", "titulo", 200)
         self._str_no_vacio(data.get("descripcion"), "raíz", "descripcion")
@@ -89,11 +101,13 @@ class Validador:
         if not isinstance(metadata, dict):
             self.err("raíz", "'metadata' debe ser un objeto (puede estar vacío {}).")
 
-        self._validar_criterios(data.get("criterios"))
+        version = schema_version if schema_version is not None else _inferir_schema_version(data)
+        self._validar_criterios(data.get("criterios"), version)
         self._validar_penalizaciones(data.get("penalizaciones", []))
         self._validar_condiciones(data.get("condiciones_desaprobacion", []))
+        return version
 
-    def _validar_criterios(self, criterios) -> None:
+    def _validar_criterios(self, criterios, schema_version: int) -> None:
         if not isinstance(criterios, list) or len(criterios) == 0:
             self.err("raíz", "'criterios' debe ser una lista con al menos 1 criterio.")
             return
@@ -116,14 +130,19 @@ class Validador:
             self._str_no_vacio(c.get("descripcion"), ubic, "descripcion", 500)
 
             peso = c.get("peso")
-            if self._int_en_rango(peso, ubic, "peso", 1, 100):
+            peso_valido = self._int_en_rango(peso, ubic, "peso", 1, 100)
+            if peso_valido:
                 suma_pesos += peso
 
             instr = c.get("instrucciones_puntuacion")
             if instr is not None and (not isinstance(instr, str) or len(instr) > 2000):
                 self.err(ubic, "'instrucciones_puntuacion' es opcional pero debe ser texto de ≤2000 chars.")
 
-            self._validar_subcriterios(c.get("subcriterios"), cid or f"#{i}", ubic)
+            self._validar_subcriterios(
+                c.get("subcriterios"), cid or f"#{i}", ubic,
+                peso_criterio=peso if peso_valido else None,
+                schema_version=schema_version,
+            )
 
         # IDs de criterios únicos
         dup = _duplicados(ids)
@@ -138,12 +157,16 @@ class Validador:
                 f"Reajustá los pesos antes de cargar.",
             )
 
-    def _validar_subcriterios(self, subs, criterio_id: str, ubic_padre: str) -> None:
+    def _validar_subcriterios(
+        self, subs, criterio_id: str, ubic_padre: str,
+        peso_criterio: int | None, schema_version: int,
+    ) -> None:
         if not isinstance(subs, list) or len(subs) == 0:
             self.err(ubic_padre, f"el criterio '{criterio_id}' debe tener al menos 1 subcriterio.")
             return
 
         sub_ids: list[str] = []
+        suma_pesos_sub = 0
         for j, s in enumerate(subs):
             ubic = f"{ubic_padre}.subcriterios[{j}]"
             if not isinstance(s, dict):
@@ -166,9 +189,25 @@ class Validador:
                     if not isinstance(e, str) or not e.strip():
                         self.err(ubic, f"evidencias[{k}] no puede estar vacía.")
 
+            # En v2 el peso del subcriterio es obligatorio y se valida/suma.
+            # En v1 no se exige (retrocompatibilidad exacta con rúbricas viejas).
+            if schema_version == 2:
+                peso_sub = s.get("peso")
+                if self._int_en_rango(peso_sub, ubic, "peso", 1, 100):
+                    suma_pesos_sub += peso_sub
+
         dup = _duplicados(sub_ids)
         if dup:
             self.err(ubic_padre, f"IDs de subcriterios duplicados en '{criterio_id}': {', '.join(dup)}.")
+
+        # Σ pesos de subcriterios == peso del criterio (solo v2, y solo si el
+        # peso del criterio en sí es válido -- si no lo es, ya se reportó arriba).
+        if schema_version == 2 and peso_criterio is not None and suma_pesos_sub != peso_criterio:
+            self.err(
+                ubic_padre,
+                f"La suma de los pesos de los subcriterios de '{criterio_id}' es "
+                f"{suma_pesos_sub}, debe ser exactamente {peso_criterio} (el peso del criterio).",
+            )
 
     def _validar_penalizaciones(self, penas) -> None:
         if not isinstance(penas, list):
@@ -216,6 +255,22 @@ class Validador:
             self.err("condiciones_desaprobacion", f"IDs de condiciones duplicados: {', '.join(dup)}.")
 
 
+def _inferir_schema_version(data: dict) -> int:
+    """Misma regla que usa el front de Active-IA al guardar: si ALGÚN
+    subcriterio de ALGÚN criterio trae la clave `peso`, toda la rúbrica se
+    trata como v2. `schema_version` no viaja en este JSON -- se infiere."""
+    criterios = data.get("criterios")
+    if not isinstance(criterios, list):
+        return 1
+    for c in criterios:
+        if not isinstance(c, dict):
+            continue
+        for s in c.get("subcriterios") or []:
+            if isinstance(s, dict) and "peso" in s:
+                return 2
+    return 1
+
+
 def _duplicados(items: list[str]) -> list[str]:
     vistos: set[str] = set()
     dups: list[str] = []
@@ -227,11 +282,22 @@ def _duplicados(items: list[str]) -> list[str]:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("Uso: python validar_rubrica.py <ruta_al_json | ->", file=sys.stderr)
+    args = [a for a in sys.argv[1:] if not a.startswith("--schema-version")]
+    schema_version: int | None = None
+    for i, a in enumerate(sys.argv[1:], start=1):
+        if a == "--schema-version" and i < len(sys.argv) - 1:
+            schema_version = int(sys.argv[i + 1])
+        elif a.startswith("--schema-version="):
+            schema_version = int(a.split("=", 1)[1])
+    if schema_version is not None and schema_version not in (1, 2):
+        print("--schema-version debe ser 1 o 2.", file=sys.stderr)
         return 2
 
-    origen = sys.argv[1]
+    if len(args) != 1:
+        print("Uso: python validar_rubrica.py <ruta_al_json | -> [--schema-version 1|2]", file=sys.stderr)
+        return 2
+
+    origen = args[0]
     try:
         raw = sys.stdin.read() if origen == "-" else open(origen, encoding="utf-8").read()
     except OSError as e:
@@ -245,7 +311,7 @@ def main() -> int:
         return 2
 
     v = Validador()
-    v.validar(data)
+    version = v.validar(data, schema_version=schema_version)
 
     if v.errores:
         print(f"❌ RÚBRICA INVÁLIDA — {len(v.errores)} error(es):\n")
@@ -256,8 +322,12 @@ def main() -> int:
 
     n_crit = len(data.get("criterios", []))
     n_sub = sum(len(c.get("subcriterios", [])) for c in data.get("criterios", []))
+    origen_version = "forzada con --schema-version" if schema_version is not None else "inferida por presencia de peso en subcriterios"
     print("✅ RÚBRICA VÁLIDA — el backend la acepta.")
-    print(f"   {n_crit} criterios · {n_sub} subcriterios · Σ pesos = 100 ✓")
+    resumen = f"   schema_version={version} ({origen_version}) · {n_crit} criterios · {n_sub} subcriterios · Σ pesos criterios = 100 ✓"
+    if version == 2:
+        resumen += " · Σ pesos subcriterios = peso criterio ✓"
+    print(resumen)
     return 0
 
 

@@ -20,11 +20,21 @@ le envía al modelo todo lo que la rúbrica define:
 Si el workflow de N8N hoy omite alguna de estas partes, es un BUG del workflow,
 no algo que este test deba imitar. El test ejerce la corrección CORRECTA.
 
+v1 vs v2 (schema_version no viaja en el JSON, se infiere por presencia de
+`peso` en subcriterios -- igual que el front de Active-IA):
+  - v1: subcriterios sin peso propio. El prompt lista descripción + evidencias
+    y deja que el modelo reparta el puntaje del criterio a su criterio.
+  - v2: subcriterios con `peso` obligatorio. El prompt lista el peso de cada
+    subcriterio y exige que el modelo asigne puntaje por subcriterio y que
+    el puntaje del criterio sea la suma; la corrección debe traer
+    `subcriterios_evaluados` con ese desglose.
+
 Uso:
     python simular_correccion.py --rubrica <rubrica.json> --entrega <archivo|carpeta|.zip|.txt>
         [--materia "Nombre"] [--alumno "Nombre"] [--tipo TP]
         [--modo solo_codigo|web_completo|proyecto_completo|personalizado]
         [--ext ".ipynb,.sql"] [--out <carpeta>] [--model <id>] [--no-run]
+        [--schema-version 1|2]   # fuerza la versión en vez de inferirla
 
 Salida:
     <out>/prompt_correccion.txt  → el material EXACTO que recibe el modelo
@@ -214,18 +224,33 @@ def consolidar(entrega: str, modo: str, custom: list[str] | None) -> str:
     return build_document([(fname, contenido)], nom, single=True)
 
 
-def cargar_rubrica(path: str) -> dict:
+def _inferir_schema_version(criterios: list) -> int:
+    """Misma regla que usa el front de Active-IA al guardar: si ALGÚN
+    subcriterio de ALGÚN criterio trae la clave `peso`, toda la rúbrica se
+    trata como v2. `schema_version` no viaja en el JSON -- se infiere."""
+    for c in criterios:
+        if not isinstance(c, dict):
+            continue
+        for s in c.get("subcriterios") or []:
+            if isinstance(s, dict) and "peso" in s:
+                return 2
+    return 1
+
+
+def cargar_rubrica(path: str, schema_version: int | None = None) -> dict:
     """Acepta CriteriosStructure o RubricaCreate y normaliza la rúbrica completa."""
     data = json.load(open(path, encoding="utf-8"))
+    criterios = data.get("criterios") or data.get("criterios_json") or []
     return {
         "titulo": data.get("titulo", "Sin título"),
         "tipo": data.get("tipo"),
         "puntaje_maximo": data.get("puntaje_maximo", 100),
         "metadata": data.get("metadata") or data.get("metadata_json") or {},
-        "criterios": data.get("criterios") or data.get("criterios_json") or [],
+        "criterios": criterios,
         "penalizaciones": data.get("penalizaciones") or data.get("penalizaciones_json") or [],
         "condiciones_desaprobacion": (data.get("condiciones_desaprobacion")
                                       or data.get("condiciones_desaprobacion_json") or []),
+        "schema_version": schema_version if schema_version is not None else _inferir_schema_version(criterios),
     }
 
 
@@ -236,6 +261,8 @@ def build_prompt(rubrica: dict, codigo: str, materia: str, alumno: str) -> str:
     incluir subcriterios+evidencias (patrón de correccion-pdf-workflow.json),
     instrucciones_puntuación y metadata.
     """
+    es_v2 = rubrica.get("schema_version") == 2
+
     # Criterios CON subcriterios + evidencias + instrucciones de puntuación
     criterios_texto = ""
     for c in rubrica["criterios"]:
@@ -246,7 +273,14 @@ def build_prompt(rubrica: dict, codigo: str, materia: str, alumno: str) -> str:
         if c.get("instrucciones_puntuacion"):
             criterios_texto += f"  Instrucciones de puntuación: {c['instrucciones_puntuacion']}\n"
         subs = c.get("subcriterios") or []
-        if subs:
+        if subs and es_v2:
+            criterios_texto += "  Subcriterios (cada uno puntúa por separado, checklist de evidencias):\n"
+            for sub in subs:
+                criterios_texto += f"  [{sub.get('id')}] ({sub.get('peso')} pts) {sub.get('descripcion', '')}\n"
+                criterios_texto += "    Evidencias:\n"
+                for ev in (sub.get("evidencias") or []):
+                    criterios_texto += f"    - {ev}\n"
+        elif subs:
             criterios_texto += "  Evidencias esperadas (checklist verificable en la entrega):\n"
             for sub in subs:
                 if sub.get("descripcion"):
@@ -338,15 +372,31 @@ def build_prompt(rubrica: dict, codigo: str, materia: str, alumno: str) -> str:
         f'      "puntaje_obtenido": <número>,\n'
         f'      "puntaje_maximo": <número igual al peso del criterio>,\n'
         f'      "estado": "<OK|WARNING|ERROR>",\n'
-        f'      "feedback": "<feedback específico>"\n'
-        f"    }}\n"
+        f'      "feedback": "<feedback específico>"'
+        + (
+            ",\n"
+            f'      "subcriterios_evaluados": [\n'
+            f"        {{\n"
+            f'          "id": "<ID exacto del subcriterio, ej: C2.1>",\n'
+            f'          "puntaje_obtenido": <número entre 0 y el peso del subcriterio>,\n'
+            f'          "puntaje_maximo": <número igual al peso del subcriterio>,\n'
+            f'          "estado": "<OK|WARNING|ERROR>",\n'
+            f'          "feedback": "<feedback específico del subcriterio>"\n'
+            f"        }}\n"
+            f"      ]\n"
+            if es_v2 else "\n"
+        )
+        + f"    }}\n"
         f"  ],\n"
         f'  "fortalezas": ["<fortaleza 1>", "<fortaleza 2>"],\n'
         f'  "recomendaciones": ["<recomendación 1>", "<recomendación 2>"],\n'
         f'  "comentario_general": "<comentario de 2-3 oraciones>"\n'
         f"}}\n\n"
         f"IMPORTANTE:\n"
-        f"- CADA criterio debe tener su ID exacto de la rúbrica\n"
+        + (f"- Para cada subcriterio, asigná un puntaje entre 0 y su peso; el "
+           f'"puntaje_obtenido" del criterio debe ser la SUMA de los puntajes de sus '
+           f'subcriterios. Incluí ese desglose en "subcriterios_evaluados".\n' if es_v2 else "")
+        + f"- CADA criterio debe tener su ID exacto de la rúbrica\n"
         f'- Si aplica una condición de desaprobación, "nota" debe ser min(suma_criterios, '
         f'nota_maxima_de_la_condicion), pero IGUAL debes evaluar todos los criterios con su puntaje real.\n'
         f'- Si aplica una penalización, "nota" debe reflejar el descuento aplicado sobre "nota_antes_penalizaciones".\n'
@@ -397,6 +447,47 @@ def normalizar_nota(corr: dict) -> None:
         corr["nota"] = suma
 
 
+def _informe_subcriterios(rubrica: dict, resp: dict) -> list[str]:
+    """Valida el desglose `subcriterios_evaluados` de una corrección v2
+    contra los subcriterios (con peso) definidos en la rúbrica."""
+    warns: list[str] = []
+    for cid, c in resp.items():
+        criterio_rubrica = next(
+            (cr for cr in rubrica["criterios"] if str(cr.get("id")) == cid), None
+        )
+        if criterio_rubrica is None:
+            continue
+        peso_sub_por_id = {
+            str(s.get("id")): s.get("peso") for s in criterio_rubrica.get("subcriterios") or []
+        }
+        evaluados = c.get("subcriterios_evaluados")
+        if not evaluados:
+            warns.append(
+                f"'{cid}': la rúbrica es v2 (subcriterios con peso) pero la corrección "
+                f"no trajo 'subcriterios_evaluados' para este criterio."
+            )
+            continue
+        for sub in evaluados:
+            sid = str(sub.get("id"))
+            if sid not in peso_sub_por_id:
+                warns.append(f"'{cid}': subcriterios_evaluados trae '{sid}', que no existe en la rúbrica.")
+                continue
+            peso_sub = peso_sub_por_id[sid]
+            obt_sub = sub.get("puntaje_obtenido")
+            if peso_sub is not None and isinstance(obt_sub, (int, float)) and obt_sub > peso_sub:
+                warns.append(f"'{cid}.{sid}': puntaje_obtenido {obt_sub} supera el peso {peso_sub}.")
+        suma_sub = sum(
+            s.get("puntaje_obtenido", 0) for s in evaluados if isinstance(s.get("puntaje_obtenido"), (int, float))
+        )
+        obt_criterio = c.get("puntaje_obtenido")
+        if isinstance(obt_criterio, (int, float)) and suma_sub != obt_criterio:
+            warns.append(
+                f"'{cid}': la suma de subcriterios_evaluados ({suma_sub}) no coincide "
+                f"con puntaje_obtenido del criterio ({obt_criterio})."
+            )
+    return warns
+
+
 def informe(rubrica: dict, corr: dict) -> list[str]:
     """Valida la corrección contra la rúbrica y devuelve advertencias."""
     warns: list[str] = []
@@ -414,6 +505,9 @@ def informe(rubrica: dict, corr: dict) -> list[str]:
         obt = c.get("puntaje_obtenido")
         if peso is not None and isinstance(obt, (int, float)) and obt > peso:
             warns.append(f"'{cid}': puntaje_obtenido {obt} supera el peso {peso}.")
+
+    if rubrica.get("schema_version") == 2:
+        warns.extend(_informe_subcriterios(rubrica, resp))
 
     pen_ids = {str(p.get("id")) for p in rubrica["penalizaciones"]}
     for pid in (corr.get("penalizaciones_aplicadas") or []):
@@ -447,6 +541,14 @@ def imprimir(rubrica: dict, corr: dict, warns: list[str]) -> None:
         fb = (c.get("feedback") or "").strip()
         if fb:
             print(f"      → {fb}")
+        for sub in c.get("subcriterios_evaluados") or []:
+            sub_est = sub.get("estado", "?")
+            sub_icono = {"OK": "✅", "WARNING": "⚠️ ", "ERROR": "❌"}.get(sub_est, "•")
+            print(f"      {sub_icono} [{sub.get('id')}] "
+                  f"{sub.get('puntaje_obtenido')}/{sub.get('puntaje_maximo')} ({sub_est})")
+            sub_fb = (sub.get("feedback") or "").strip()
+            if sub_fb:
+                print(f"          → {sub_fb}")
     if corr.get("fortalezas"):
         print("\nFortalezas:")
         for f in corr["fortalezas"]:
@@ -478,9 +580,11 @@ def main() -> int:
     ap.add_argument("--out", default=None, help="Carpeta de salida (default: junto a la rúbrica)")
     ap.add_argument("--model", default=None, help="Modelo para claude -p (opcional)")
     ap.add_argument("--no-run", action="store_true", help="Solo prepara el material, no ejecuta claude")
+    ap.add_argument("--schema-version", type=int, choices=(1, 2), default=None,
+                     help="Fuerza v1/v2 en vez de inferirla por presencia de 'peso' en subcriterios")
     args = ap.parse_args()
 
-    rubrica = cargar_rubrica(args.rubrica)
+    rubrica = cargar_rubrica(args.rubrica, schema_version=args.schema_version)
     if not rubrica["tipo"]:
         rubrica["tipo"] = args.tipo or "TP"
     if not rubrica["criterios"]:
@@ -496,8 +600,8 @@ def main() -> int:
     open(prompt_path, "w", encoding="utf-8").write(prompt)
     print(f"📝 Material de corrección escrito en: {prompt_path}")
     n_sub = sum(len(c.get("subcriterios") or []) for c in rubrica["criterios"])
-    print(f"   ({len(rubrica['criterios'])} criterios · {n_sub} subcriterios · "
-          f"código consolidado: {len(codigo):,} chars)")
+    print(f"   (schema_version={rubrica['schema_version']} · {len(rubrica['criterios'])} criterios · "
+          f"{n_sub} subcriterios · código consolidado: {len(codigo):,} chars)")
 
     if args.no_run:
         cmd = "claude -p" + (f" --model {args.model}" if args.model else "")

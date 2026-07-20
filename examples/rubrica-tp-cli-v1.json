@@ -21,7 +21,6 @@
         {
           "id": "C1.1",
           "descripcion": "Permite agregar una tarea con una descripción.",
-          "peso": 10,
           "evidencias": [
             "Existe una opción de menú o función para agregar una tarea",
             "La tarea agregada guarda una descripción ingresada por el usuario"
@@ -30,7 +29,6 @@
         {
           "id": "C1.2",
           "descripcion": "Permite listar todas las tareas mostrando id, descripción y estado (pendiente/hecha).",
-          "peso": 10,
           "evidencias": [
             "Existe una opción de menú o función para listar las tareas",
             "El listado muestra un id por cada tarea",
@@ -41,7 +39,6 @@
         {
           "id": "C1.3",
           "descripcion": "Permite marcar una tarea como hecha por su id.",
-          "peso": 10,
           "evidencias": [
             "Existe una opción de menú o función para marcar una tarea como hecha indicando su id",
             "Al marcar, el estado de la tarea correspondiente pasa a hecha"
@@ -50,7 +47,6 @@
         {
           "id": "C1.4",
           "descripcion": "Permite eliminar una tarea por su id.",
-          "peso": 10,
           "evidencias": [
             "Existe una opción de menú o función para eliminar una tarea indicando su id",
             "Al eliminar, la tarea con ese id deja de existir en la lista"
@@ -68,7 +64,6 @@
         {
           "id": "C2.1",
           "descripcion": "Las tareas se guardan en un archivo tareas.json.",
-          "peso": 10,
           "evidencias": [
             "El código escribe los datos de las tareas en un archivo llamado tareas.json",
             "Las tareas creadas/modificadas/eliminadas se reflejan en el archivo tareas.json"
@@ -77,7 +72,6 @@
         {
           "id": "C2.2",
           "descripcion": "Al iniciar, la app carga las tareas existentes desde tareas.json.",
-          "peso": 10,
           "evidencias": [
             "El código lee tareas.json al iniciar la aplicación",
             "Las tareas leídas del archivo quedan disponibles en la sesión actual"
@@ -95,7 +89,6 @@
         {
           "id": "C3.1",
           "descripcion": "Usa exclusivamente la librería estándar de Python (sin librerías externas).",
-          "peso": 9,
           "evidencias": [
             "No hay imports de librerías externas (todo lo importado pertenece a la librería estándar de Python)",
             "No existe un archivo de dependencias externas (requirements.txt, Pipfile, etc.) que declare paquetes de terceros"
@@ -104,7 +97,6 @@
         {
           "id": "C3.2",
           "descripcion": "El menú se maneja por entrada del usuario en consola mediante input.",
-          "peso": 8,
           "evidencias": [
             "El código usa input() para recibir las opciones del menú del usuario",
             "La interacción ocurre por consola (no por argumentos de línea de comandos ni interfaz gráfica)"
@@ -113,7 +105,6 @@
         {
           "id": "C3.3",
           "descripcion": "Ingresar un id inexistente al marcar o eliminar muestra un mensaje de error claro y no rompe la app (sin traceback).",
-          "peso": 8,
           "evidencias": [
             "Al marcar como hecha un id inexistente se muestra un mensaje de error claro",
             "Al eliminar un id inexistente se muestra un mensaje de error claro",
@@ -131,7 +122,6 @@
         {
           "id": "C4.1",
           "descripcion": "El código está separado en al menos dos archivos: lógica y punto de entrada main.py.",
-          "peso": 5,
           "evidencias": [
             "Existe un archivo main.py que actúa como punto de entrada",
             "Existe al menos otro archivo .py que contiene la lógica (funciones) separada del punto de entrada"
@@ -148,7 +138,6 @@
         {
           "id": "C5.1",
           "descripcion": "README con instrucciones de cómo ejecutar la app (python main.py).",
-          "peso": 5,
           "evidencias": [
             "Existe un archivo README",
             "El README indica cómo ejecutar la app (incluye el comando python main.py o equivalente)"
@@ -157,7 +146,6 @@
         {
           "id": "C5.2",
           "descripcion": "El archivo tareas.json con datos de prueba no está versionado y figura en .gitignore.",
-          "peso": 5,
           "evidencias": [
             "Existe un archivo .gitignore",
             "El archivo .gitignore incluye una entrada que excluye tareas.json",

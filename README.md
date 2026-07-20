@@ -4,7 +4,7 @@
 
 Una rúbrica no sirve solo para verse prolija: tiene que ser **autosuficiente**. Cuando el sistema corrige, el modelo ve únicamente la rúbrica y la entrega del alumno — nunca la consigna original. Si un requisito no quedó escrito en la rúbrica, no se evalúa. Esta skill se asegura de que eso no pase.
 
-Y un segundo pilar, igual de importante: **el puntaje vive en el criterio** (`peso`); el subcriterio no puntúa, es checklist. Por eso, si un requisito necesita poder **descontarse por sí solo**, va como criterio propio — no enterrado en un subcriterio sin palanca de nota. La skill aplica ese **test de granularidad** al crear y al auditar, para que la corrección sea **determinista** (que el mismo trabajo no saque notas distintas según el modelo).
+Y un segundo pilar, igual de importante: el modelo de Active-IA tiene dos versiones. En **v1** (rúbricas ya cargadas) el puntaje vive solo en el criterio (`peso`); el subcriterio es checklist puro. En **v2** — la que esta skill genera por defecto — **el subcriterio también tiene `peso` propio**, y la suma de los pesos de sus subcriterios debe dar exacto el `peso` del criterio. La skill aplica un **test de granularidad** (¿es un área de evaluación distinta, o un requisito puntual dentro de una ya cubierta?) al crear y al auditar, para que la corrección sea **determinista** (que el mismo trabajo no saque notas distintas según el modelo).
 
 ## ✨ Qué hace
 
@@ -69,21 +69,22 @@ Esto consolida la entrega, arma el prompt de corrección con la rúbrica complet
 rubrica-builder/
 ├── SKILL.md                       # definición de la skill (4 modos)
 ├── scripts/
-│   ├── validar_rubrica.py         # valida la estructura V2 (espejo del backend)
+│   ├── validar_rubrica.py         # valida v1 y v2 (espejo del backend)
 │   └── simular_correccion.py      # modo TEST: corrección local con claude
 ├── references/
-│   ├── modelo-rubrica.md          # modelo de rúbrica V2 (fuente de verdad)
+│   ├── modelo-rubrica.md          # modelo de rúbrica v1 y v2 (fuente de verdad)
 │   └── limites-corrector.md       # qué puede y qué NO evaluar la IA (modo CURAR)
 ├── assets/
-│   └── ejemplo-rubrica.json       # rúbrica V2 completa de ejemplo
+│   └── ejemplo-rubrica.json       # rúbrica v2 completa de ejemplo
 └── examples/
-    ├── rubrica-tp-cli.json        # rúbrica de ejemplo para el modo TEST
+    ├── rubrica-tp-cli.json        # rúbrica v2 de ejemplo para el modo TEST
+    ├── rubrica-tp-cli-v1.json     # misma rúbrica en v1, para probar retrocompatibilidad
     └── entrega-demo/              # entrega de alumno de ejemplo
 ```
 
 ## 📐 Modelo de rúbrica
 
-El esquema completo (criterios, subcriterios, evidencias, penalizaciones, condiciones de desaprobación y reglas de validación) está documentado en [`references/modelo-rubrica.md`](references/modelo-rubrica.md).
+El esquema completo (criterios, subcriterios, evidencias, penalizaciones, condiciones de desaprobación y reglas de validación) está documentado en [`references/modelo-rubrica.md`](references/modelo-rubrica.md), que cubre ambas versiones vigentes: **v1** (subcriterios sin peso, rúbricas ya cargadas) y **v2** (subcriterios con peso propio, la que la skill genera por defecto).
 
 ## 📄 Licencia
 
