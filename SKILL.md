@@ -279,7 +279,11 @@ Antes de auditar contenido, chequeá el modelo: **si ningún subcriterio trae
 No es opcional y no hace falta preguntar — la mejor rúbrica es siempre la v2.
 Regla dura de la migración: **no se pierde información**. Todo criterio,
 subcriterio, descripción y evidencia existente se conserva; lo único que
-cambia es cómo queda organizado.
+cambia es cómo queda organizado. La migración toca SOLO `criterios` y
+`subcriterios`: `titulo`, `descripcion` de la rúbrica, `metadata`,
+`penalizaciones` y `condiciones_desaprobacion` quedan exactamente igual que
+en la v1 original (si hay que tocarlos, es por otro paso de la auditoría —
+Contradicciones, Omisiones, etc. —, no por la migración en sí).
 
 **Por qué no alcanza con solo agregar `peso`:** en v1, si un profesor quería
 poder descontar el POST, el GET y el PUT/DELETE de un CRUD por separado, no
@@ -320,9 +324,11 @@ criterio v2 con subcriterios — no solo pegarle un `peso` a lo que ya había.
        automático).
      - `descripcion` = la descripción del criterio original.
      - `evidencias` = todas las evidencias de todos los subcriterios v1 que
-       tenía ese criterio, aplanadas en una sola lista (sumando la
+       tenía ese criterio, **copiadas literal** (no las reformules ni las
+       resumas — son afirmaciones verificables, cambiarles la letra puede
+       cambiar qué verifican), aplanadas en una sola lista, sumando la
        descripción de cada uno de esos subcriterios v1 como evidencia si
-       aporta información nueva).
+       aporta información nueva.
      - `instrucciones_puntuacion` que tuviera el criterio original se sube al
        `instrucciones_puntuacion` del nuevo criterio (campo válido solo a
        nivel criterio), indicando a qué subcriterio corresponde cada regla.
@@ -346,8 +352,22 @@ criterio v2 con subcriterios — no solo pegarle un `peso` a lo que ya había.
    correlativos sin huecos tras las fusiones — no lo exige el validador, pero
    ayuda a leer la rúbrica.
 
-**f) Reportá la migración en el resumen de hallazgos** (ver "Formato de
-   salida"): qué criterios se fusionaron, en qué área nueva, y con qué peso.
+**f) Verificá completitud antes de seguir.** Este paso es obligatorio, no
+   opcional — es lo que sostiene la regla de "no se pierde información".
+   Recorré la rúbrica v1 original elemento por elemento (cada criterio, cada
+   subcriterio, cada evidencia, cada `instrucciones_puntuacion`) y confirmá
+   que cada uno aparece en algún lugar del resultado v2: como criterio, como
+   subcriterio, o como evidencia. Si conscientemente decidís no llevar algo
+   (por ejemplo porque el paso 4, Invenciones, lo identifica como algo que la
+   consigna no respalda), NO lo saques en silencio durante la migración —
+   dejalo como estaba en el Paso 0 y sacalo recién en el paso correspondiente
+   de la auditoría, para que quede reportado con su motivo.
+
+**g) Reportá la migración en el resumen de hallazgos** (ver "Formato de
+   salida"): la tabla de mapeo `criterio/subcriterio v1 → dónde quedó en v2`
+   (qué se fusionó, en qué área nueva y con qué peso; qué quedó igual), y la
+   confirmación de que el chequeo de completitud del punto (f) no encontró
+   nada faltante.
 
 Con la rúbrica ya en v2 (recién migrada, o porque ya lo era), seguí con los
 pasos de auditoría de contenido de abajo.
@@ -486,8 +506,11 @@ ALWAYS entregá en este orden:
 **1. (Solo en AUDITAR) Resumen de hallazgos** — breve, antes del JSON:
 ```
 ## Hallazgos
-- Migración v1→v2: <"la rúbrica ya era v2, sin cambios" | detalle de qué
-  criterios se migraron a subcriterio-con-peso y por qué, o "no aplica">
+- Migración v1→v2: <"la rúbrica ya era v2, sin cambios" | mapeo
+  "criterio/subcriterio v1 → dónde quedó en v2" con cada fusión y su peso
+  heredado | "no aplica">
+- Verificación de completitud: <"OK, todo el contenido v1 está presente en
+  el v2" | qué faltaba y se agregó>
 - Contradicciones: <qué y dónde, o "ninguna">
 - Omisiones: <qué requisitos faltaban, o "ninguna">
 - Invenciones: <qué se quitó, o "ninguna">
