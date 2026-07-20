@@ -272,6 +272,35 @@ Acá sos un profesor experto en evaluación haciendo análisis crítico. Tenés 
 consigna y un borrador de rúbrica. Tu trabajo es dejar la rúbrica fiel, estricta y
 completa respecto del TP, y autosuficiente para corregir. Revisá en este orden:
 
+### Paso 0 — Migración v1→v2 (si la rúbrica es vieja)
+
+Antes de auditar contenido, chequeá el modelo: **si ningún subcriterio trae
+`peso`, la rúbrica es v1 y la migrás a v2 como parte de esta misma auditoría.**
+No es opcional y no hace falta preguntar — la mejor rúbrica es siempre la v2.
+Regla dura de la migración: **no se pierde información**. Todo criterio,
+subcriterio, descripción y evidencia existente se conserva; lo único que
+cambia es cómo queda organizado.
+
+a) **Asigná `peso` a cada subcriterio** existente, sumando exacto al `peso` de
+   su criterio (ponderación de la consigna si es clara; si no, Hamilton — ver
+   "El principio que decide la granularidad").
+b) **Reaplicá el test de granularidad v2** a los criterios existentes. En v1 la
+   ÚNICA forma de darle a un requisito su propia palanca de descuento era
+   promoverlo a criterio — así que es común encontrar criterios v1 que no son
+   un área/dimensión distinta, sino un requisito puntual que en v1 no tenía
+   otra opción. Si un criterio existente no representa un área real (ver "El
+   principio que decide la granularidad"), consolidalo: bajalo a subcriterio
+   con `peso` propio dentro del criterio que sí es el área correspondiente. Su
+   `descripcion` y sus `evidencias` pasan intactas al subcriterio resultante
+   — no se resume ni se recorta nada, solo cambia el nivel jerárquico.
+c) Recalculá Σ `peso` de los criterios == 100 después de cualquier
+   consolidación (si bajaste un criterio a subcriterio, su `peso` se reparte
+   entre los criterios que quedan, o se suma al criterio que lo absorbe).
+d) Reportá la migración en el resumen de hallazgos (ver "Formato de salida").
+
+Con la rúbrica ya en v2 (recién migrada, o porque ya lo era), seguí con los
+pasos de auditoría de contenido de abajo.
+
 1. **Contradicciones.** Puntos donde la rúbrica choca con la consigna. Ejemplo
    clásico: el TP exige eliminar/no usar algo y la rúbrica lo da por opcional o
    premia dejarlo. Corregí para que la rúbrica diga lo mismo que el TP.
@@ -281,8 +310,9 @@ completa respecto del TP, y autosuficiente para corregir. Revisá en este orden:
    estructura obligatoria, ejecución. Agregalos como criterios, subcriterios o
    evidencias. Esta es la falla más grave: lo omitido nunca se corrige.
 
-3. **Requisitos diluidos.** En v2 la dilución real ya no es "subcriterio sin
-   peso propio" (eso el modelo lo resuelve solo): es otra cosa. Revisá:
+3. **Requisitos diluidos.** Para cuando llegás acá la rúbrica ya está en v2 (Paso
+   0 la migró si hacía falta), así que la dilución real ya no es "subcriterio
+   sin peso propio" (eso el modelo lo resuelve solo): es otra cosa. Revisá:
    - **Área mal ubicada:** un requisito que es una dimensión de evaluación
      distinta (ver "El principio que decide la granularidad") está enterrado
      como subcriterio de un criterio que no le corresponde → promovelo a
@@ -296,10 +326,6 @@ completa respecto del TP, y autosuficiente para corregir. Revisá en este orden:
      absorbe todo el `peso` cuando en realidad agrupa varios requisitos
      independientes que convendría desglosar en más subcriterios con `peso`
      propio, para que el corrector tenga granularidad real al puntuar.
-   - Si la rúbrica que estás auditando es v1 (subcriterios sin `peso`), seguí
-     aplicando la lógica vieja: promové a criterio lo que necesite descontarse
-     solo. No conviertas una rúbrica v1 a v2 de prepo — la migración la decide
-     el usuario (ver "Formato de salida").
 
 4. **Invenciones.** Criterios, concesiones o reglas que la rúbrica trae pero el TP
    no respalda en ningún lado. Sacalos. La rúbrica no puede ser más blanda ni más
@@ -311,9 +337,10 @@ completa respecto del TP, y autosuficiente para corregir. Revisá en este orden:
 5. **Elementos visuales.** Si el TP tiene imágenes/tablas/esquemas que importan para
    evaluar y la rúbrica no los refleja en texto, incorporalos.
 
-6. **Ajuste de pesos.** Si agregaste o sacaste criterios, recalculá los `peso` para
-   que la suma vuelva a ser exactamente 100. Respetá la importancia relativa que da
-   la consigna.
+6. **Ajuste de pesos.** Si agregaste, sacaste o consolidaste criterios (incluida la
+   migración del Paso 0), recalculá los `peso` para que la suma vuelva a ser
+   exactamente 100, y que la de los subcriterios de cada criterio cierre con su
+   `peso`. Respetá la importancia relativa que da la consigna.
 
 7. **Validá** con el script.
 
@@ -408,6 +435,8 @@ ALWAYS entregá en este orden:
 **1. (Solo en AUDITAR) Resumen de hallazgos** — breve, antes del JSON:
 ```
 ## Hallazgos
+- Migración v1→v2: <"la rúbrica ya era v2, sin cambios" | detalle de qué
+  criterios se migraron a subcriterio-con-peso y por qué, o "no aplica">
 - Contradicciones: <qué y dónde, o "ninguna">
 - Omisiones: <qué requisitos faltaban, o "ninguna">
 - Invenciones: <qué se quitó, o "ninguna">
