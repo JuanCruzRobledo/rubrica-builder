@@ -281,22 +281,73 @@ Regla dura de la migración: **no se pierde información**. Todo criterio,
 subcriterio, descripción y evidencia existente se conserva; lo único que
 cambia es cómo queda organizado.
 
-a) **Asigná `peso` a cada subcriterio** existente, sumando exacto al `peso` de
-   su criterio (ponderación de la consigna si es clara; si no, Hamilton — ver
-   "El principio que decide la granularidad").
-b) **Reaplicá el test de granularidad v2** a los criterios existentes. En v1 la
-   ÚNICA forma de darle a un requisito su propia palanca de descuento era
-   promoverlo a criterio — así que es común encontrar criterios v1 que no son
-   un área/dimensión distinta, sino un requisito puntual que en v1 no tenía
-   otra opción. Si un criterio existente no representa un área real (ver "El
-   principio que decide la granularidad"), consolidalo: bajalo a subcriterio
-   con `peso` propio dentro del criterio que sí es el área correspondiente. Su
-   `descripcion` y sus `evidencias` pasan intactas al subcriterio resultante
-   — no se resume ni se recorta nada, solo cambia el nivel jerárquico.
-c) Recalculá Σ `peso` de los criterios == 100 después de cualquier
-   consolidación (si bajaste un criterio a subcriterio, su `peso` se reparte
-   entre los criterios que quedan, o se suma al criterio que lo absorbe).
-d) Reportá la migración en el resumen de hallazgos (ver "Formato de salida").
+**Por qué no alcanza con solo agregar `peso`:** en v1, si un profesor quería
+poder descontar el POST, el GET y el PUT/DELETE de un CRUD por separado, no
+tenía otra opción que hacer un criterio por cada uno — el subcriterio no
+puntuaba. Es común encontrar así 2 o más criterios v1 que en realidad son
+**la misma área partida en varios** solo por esa limitación técnica. Migrar
+bien significa detectar esos grupos y volver a fusionarlos en un solo
+criterio v2 con subcriterios — no solo pegarle un `peso` a lo que ya había.
+
+**a) Agrupá los criterios existentes por área real.** Para cada criterio,
+   preguntate si forma grupo con otro(s) usando el mismo test de "El principio
+   que decide la granularidad" (¿área distinta, o instancia de la misma área?).
+   Señales de que un grupo de criterios **se fusiona**:
+   - Nombres en patrón paralelo que solo cambian el objeto: "Endpoint POST",
+     "Endpoint GET", "Endpoint PUT/DELETE"; "Crear relación Alumno", "Crear
+     relación Curso".
+   - La consigna los presenta como ítems de **una misma instrucción
+     enumerada** ("el CRUD debe soportar: crear, leer, actualizar, eliminar"),
+     no como puntos distintos del trabajo.
+   - Fallar uno no es un tipo de error distinto que fallar otro — es el mismo
+     chequeo aplicado a instancias distintas.
+
+   Señal de que **NO** se fusionan (quedan como criterios propios): si
+   armaras un índice de la rúbrica, cada uno merecería su propio renglón
+   porque evalúan cosas de naturaleza distinta (ej: "Persistencia" vs.
+   "Documentación" vs. "Seguridad").
+
+**b) Para cada grupo de 2+ criterios que se fusiona**, construí un único
+   criterio v2:
+   - `peso` del nuevo criterio = **SUMA de los `peso` de los criterios
+     fusionados** (no se pierde ni un punto).
+   - `nombre`/`descripcion` = el área común, sintetizando los nombres
+     originales.
+   - Cada criterio original pasa a ser **UN subcriterio** del nuevo:
+     - `peso` del subcriterio = el `peso` que tenía ESE criterio, **heredado
+       tal cual** (por eso acá no hace falta Hamilton — la ponderación ya
+       existía, solo se baja un nivel; 15+15+15=45=peso del nuevo criterio,
+       automático).
+     - `descripcion` = la descripción del criterio original.
+     - `evidencias` = todas las evidencias de todos los subcriterios v1 que
+       tenía ese criterio, aplanadas en una sola lista (sumando la
+       descripción de cada uno de esos subcriterios v1 como evidencia si
+       aporta información nueva).
+     - `instrucciones_puntuacion` que tuviera el criterio original se sube al
+       `instrucciones_puntuacion` del nuevo criterio (campo válido solo a
+       nivel criterio), indicando a qué subcriterio corresponde cada regla.
+
+   Ejemplo: `C2: Endpoint POST (peso 15)`, `C3: Endpoint GET (peso 15)`,
+   `C4: Endpoint PUT/DELETE (peso 15)` → un solo `C2: Endpoints CRUD (peso
+   45)` con subcriterios `C2.1` (peso 15, era C2), `C2.2` (peso 15, era C3),
+   `C2.3` (peso 15, era C4).
+
+**c) Para los criterios que quedan solos** (no forman grupo — ya eran su
+   propia área): si tienen varios subcriterios v1 sin peso, ahí sí repartí
+   con **Hamilton** (o la ponderación de la consigna si es clara), porque acá
+   no hay un peso previo del que heredar — es la primera vez que ese
+   requisito se pondera por partes.
+
+**d) Recalculá Σ `peso` de los criterios == 100.** Como cada fusión conserva
+   el total (suma de pesos fusionados), esto normalmente ya cierra solo; si
+   no cierra, hay un error en alguna fusión.
+
+**e) (Opcional, prolijidad)** Renumerá los `id` de criterio para que queden
+   correlativos sin huecos tras las fusiones — no lo exige el validador, pero
+   ayuda a leer la rúbrica.
+
+**f) Reportá la migración en el resumen de hallazgos** (ver "Formato de
+   salida"): qué criterios se fusionaron, en qué área nueva, y con qué peso.
 
 Con la rúbrica ya en v2 (recién migrada, o porque ya lo era), seguí con los
 pasos de auditoría de contenido de abajo.
