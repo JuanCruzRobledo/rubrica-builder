@@ -2,6 +2,7 @@
   "titulo": "TP3 - Gestor de Tareas por Línea de Comandos (Python)",
   "descripcion": "Aplicación de consola en Python 3.10+ usando exclusivamente la librería estándar (sin librerías externas) que gestiona una lista de tareas persistente. Permite agregar, listar, marcar como hecha y eliminar tareas por id, con persistencia en un archivo tareas.json que se carga al iniciar. Maneja ids inexistentes sin romperse, organiza el código en al menos dos archivos (lógica + main.py) e incluye README con instrucciones de ejecución. Entrega vía repositorio Git público y accesible al momento de la corrección.",
   "puntaje_maximo": 100,
+  "modo_consolidacion": "proyecto_completo",
   "metadata": {
     "materia": "Programación I",
     "lenguaje": "Python 3.10+",

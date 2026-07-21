@@ -2,6 +2,7 @@
   "titulo": "TP2 - API REST de Productos",
   "descripcion": "Desarrollo de una API REST con Express.js que implemente el CRUD completo de productos, con validaciones, manejo de errores y persistencia. Entrega vía repositorio Git público con README de ejecución.",
   "puntaje_maximo": 100,
+  "modo_consolidacion": "proyecto_completo",
   "metadata": {
     "materia": "Programación Backend",
     "lenguaje": "JavaScript",

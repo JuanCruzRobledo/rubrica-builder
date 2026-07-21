@@ -36,6 +36,11 @@ Uso:
         [--ext ".ipynb,.sql"] [--out <carpeta>] [--model <id>] [--no-run]
         [--schema-version 1|2]   # fuerza la versión en vez de inferirla
 
+    --modo y --ext son OPCIONALES si la rúbrica ya trae su propio
+    `modo_consolidacion` / `extensiones_personalizadas` (JSON portable de
+    Active-IA): se usan esos valores y no hace falta repetirlos por CLI. Si se
+    pasan, tienen prioridad sobre lo que traiga el JSON.
+
 Salida:
     <out>/prompt_correccion.txt  → el material EXACTO que recibe el modelo
     <out>/correccion.json        → la corrección parseada (si se ejecutó)
@@ -251,6 +256,10 @@ def cargar_rubrica(path: str, schema_version: int | None = None) -> dict:
         "condiciones_desaprobacion": (data.get("condiciones_desaprobacion")
                                       or data.get("condiciones_desaprobacion_json") or []),
         "schema_version": schema_version if schema_version is not None else _inferir_schema_version(criterios),
+        # JSON portable de Active-IA: la rúbrica puede traer su propio modo de
+        # consolidación. Si no viene, no hay drama -- es el mismo default del backend.
+        "modo_consolidacion": data.get("modo_consolidacion"),
+        "extensiones_personalizadas": data.get("extensiones_personalizadas"),
     }
 
 
@@ -575,8 +584,13 @@ def main() -> int:
     ap.add_argument("--materia", default="Materia de prueba")
     ap.add_argument("--alumno", default="Alumno de prueba")
     ap.add_argument("--tipo", default=None, help="Tipo de rúbrica si no está en el JSON (ej: TP)")
-    ap.add_argument("--modo", default="solo_codigo")
-    ap.add_argument("--ext", default=None, help="Extensiones para modo personalizado, ej: '.ipynb,.sql'")
+    ap.add_argument("--modo", default=None,
+                     help="solo_codigo|web_completo|proyecto_completo|personalizado. "
+                          "Si se omite, se toma de 'modo_consolidacion' en el JSON de la "
+                          "rúbrica; si tampoco está, default 'solo_codigo'.")
+    ap.add_argument("--ext", default=None,
+                     help="Extensiones para modo personalizado, ej: '.ipynb,.sql'. "
+                          "Si se omite, se toma de 'extensiones_personalizadas' en el JSON.")
     ap.add_argument("--out", default=None, help="Carpeta de salida (default: junto a la rúbrica)")
     ap.add_argument("--model", default=None, help="Modelo para claude -p (opcional)")
     ap.add_argument("--no-run", action="store_true", help="Solo prepara el material, no ejecuta claude")
@@ -590,8 +604,23 @@ def main() -> int:
     if not rubrica["criterios"]:
         raise SystemExit("La rúbrica no tiene criterios.")
 
-    custom = [e.strip() for e in args.ext.split(",")] if args.ext else None
-    codigo = consolidar(args.entrega, args.modo, custom)
+    # Modo/extensiones: --modo/--ext explícitos ganan; si no se pasan, se toma lo
+    # que trae la propia rúbrica (JSON portable); si tampoco trae, default solo_codigo.
+    if args.modo:
+        modo, modo_origen = args.modo, "--modo"
+    elif rubrica["modo_consolidacion"]:
+        modo, modo_origen = rubrica["modo_consolidacion"], "modo_consolidacion de la rúbrica"
+    else:
+        modo, modo_origen = "solo_codigo", "default"
+
+    if args.ext:
+        custom = [e.strip() for e in args.ext.split(",")]
+    elif modo == "personalizado" and rubrica["extensiones_personalizadas"]:
+        custom = list(rubrica["extensiones_personalizadas"])
+    else:
+        custom = None
+
+    codigo = consolidar(args.entrega, modo, custom)
     prompt = build_prompt(rubrica, codigo, args.materia, args.alumno)
 
     out = args.out or os.path.join(os.path.dirname(os.path.abspath(args.rubrica)), "simulacion")
@@ -600,7 +629,8 @@ def main() -> int:
     open(prompt_path, "w", encoding="utf-8").write(prompt)
     print(f"📝 Material de corrección escrito en: {prompt_path}")
     n_sub = sum(len(c.get("subcriterios") or []) for c in rubrica["criterios"])
-    print(f"   (schema_version={rubrica['schema_version']} · {len(rubrica['criterios'])} criterios · "
+    print(f"   (schema_version={rubrica['schema_version']} · modo_consolidacion={modo} "
+          f"[{modo_origen}] · {len(rubrica['criterios'])} criterios · "
           f"{n_sub} subcriterios · código consolidado: {len(codigo):,} chars)")
 
     if args.no_run:

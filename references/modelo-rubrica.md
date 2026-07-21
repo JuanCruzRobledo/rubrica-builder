@@ -18,12 +18,16 @@
 
 ## Qué se pega y qué se completa aparte
 
-El botón **"Cargar criterios"** (modo JSON del editor de rúbricas) importa
-SOLO el objeto `CriteriosStructure`. Los campos de nivel rúbrica
-(`materia_id`, `tipo`, `numero`, `anio`) se completan en el formulario, no en el JSON.
+El botón **"Cargar criterios"** (modo JSON del editor de rúbricas, tanto al crear
+como al editar) importa el objeto `CriteriosStructure` **más** `modo_consolidacion`
+/ `extensiones_personalizadas` — desde que Active-IA tiene el "JSON portable" de
+rúbrica, ese campo ya no se pierde al copiar/pegar. Los campos de identidad de la
+instancia (`materia_id`, `tipo`, `numero`, `anio`) se siguen completando en el
+formulario, no en el JSON: no son parte del contenido reusable de la rúbrica.
 
-- **Se pega como JSON** → `titulo`, `descripcion`, `puntaje_maximo`, `metadata`, `criterios`, `penalizaciones`, `condiciones_desaprobacion`.
+- **Se pega como JSON** → `titulo`, `descripcion`, `puntaje_maximo`, `metadata`, `criterios`, `penalizaciones`, `condiciones_desaprobacion`, `modo_consolidacion` (y `extensiones_personalizadas` si es `"personalizado"`).
 - **Se tipea en el form** → `tipo`, `numero`, `anio` (y `materia_id`, que es contexto del usuario).
+- **Importación tolerante:** si el JSON pegado NO trae `modo_consolidacion` (rúbricas viejas, JSON armado a mano), no es un error — el form simplemente no lo autocompleta y queda el valor que ya tenía o el default `solo_codigo`. Si lo trae, es un atajo. Por eso esta skill SIEMPRE que puede lo incluye: no cuesta nada y evita que quien importe la rúbrica tenga que volver a elegir el modo a mano.
 
 ## Estructura completa (`CriteriosStructure`)
 
@@ -178,6 +182,25 @@ cambian el cálculo de la nota total — la nota final sigue siendo la suma de
 > Semántica: si la condición se cumple, la nota final NO puede superar este techo
 > (ej: plagio → `nota_maxima: 0`; falta requisito troncal → `nota_maxima: 30`).
 
+## `modo_consolidacion` / `extensiones_personalizadas` — cómo se consolida el código de las entregas
+
+| Campo | Tipo | Obligatorio | Regla |
+|-------|------|-------------|-------|
+| `modo_consolidacion` | enum | — (default `"solo_codigo"`) | uno de `"solo_codigo"`, `"web_completo"`, `"proyecto_completo"`, `"personalizado"` |
+| `extensiones_personalizadas` | array[string] \| null | solo si `modo_consolidacion == "personalizado"` | extensiones con el punto, ej: `[".ipynb", ".sql"]` |
+
+No es parte de `CriteriosStructure` en el schema Pydantic (vive en `RubricaCreate`/
+`RubricaUpdate`/`RubricaResponse`, hermano de `criterios_json`) — pero **sí es parte
+del JSON portable** que esta skill produce y que el editor de Active-IA ahora sabe
+leer/escribir (ver sección anterior). Define qué extensiones de archivo llegan
+efectivamente al corrector al consolidar la entrega (Moodle o subida manual) antes
+de pasarla a Gemini — tabla completa de extensiones por modo en
+`references/limites-corrector.md`. Elegir mal este campo no tira ningún error de
+validación (`solo_codigo` es un valor tan válido como cualquier otro): el síntoma es
+silencioso — una evidencia sobre un archivo que el modo no cubre simplemente nunca
+llega al modelo. Por eso CREAR lo determina como paso propio y AUDITAR lo revisa
+como chequeo propio (ver `SKILL.md`).
+
 ## Campos de nivel rúbrica (se tipean en el form, fuera del JSON)
 
 | Campo | Tipo | Valores |
@@ -187,6 +210,10 @@ cambian el cálculo de la nota total — la nota final sigue siendo la suma de
 | `anio` | int | 2020–2100 |
 | `materia_id` | int | contexto del usuario — la skill NO lo decide |
 | `schema_version` | int | `1` (default) o `2`. Ver nota abajo — **la skill nunca lo escribe en el JSON**. |
+
+> Notá que `modo_consolidacion` / `extensiones_personalizadas` **NO** están en esta
+> tabla: a diferencia de `tipo`/`numero`/`anio`/`materia_id` (identidad de la
+> instancia), sí viajan dentro del JSON — ver la sección de arriba.
 
 > ⚠️ **`schema_version` NO es un campo de `CriteriosStructure`.** Está
 > declarado en `RubricaCreate` (default `1`), `RubricaUpdate` (`int | None`)

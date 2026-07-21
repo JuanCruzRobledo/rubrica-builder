@@ -6,6 +6,8 @@ Una rúbrica no sirve solo para verse prolija: tiene que ser **autosuficiente**.
 
 Y un segundo pilar, igual de importante: el modelo de Active-IA tiene dos versiones. En **v1** (rúbricas ya cargadas) el puntaje vive solo en el criterio (`peso`); el subcriterio es checklist puro. En **v2** — la que esta skill genera por defecto — **el subcriterio también tiene `peso` propio**, y la suma de los pesos de sus subcriterios debe dar exacto el `peso` del criterio. La skill aplica un **test de granularidad** (¿es un área de evaluación distinta, o un requisito puntual dentro de una ya cubierta?) al crear y al auditar, para que la corrección sea **determinista** (que el mismo trabajo no saque notas distintas según el modelo).
 
+Un tercer pilar: la rúbrica también dice **cómo se consolida el código** de la entrega (`modo_consolidacion` / `extensiones_personalizadas`), y ese campo ahora viaja **dentro del JSON portable** que produce esta skill — antes se perdía al copiar/pegar. Elegirlo mal no tira ningún error: es silencioso. Si una evidencia depende de un archivo (ej. `README.md`) cuya extensión el modo no cubre, el corrector nunca lo va a leer. Por eso CREAR lo determina como paso propio y AUDITAR lo revisa como chequeo propio.
+
 ## ✨ Qué hace
 
 | Modo | Para qué | Entrada |
@@ -42,7 +44,7 @@ Solo describí lo que necesitás y pasá el material; la skill se activa automá
 
 **CURAR** corre antes de CREAR: detecta los puntos de la consigna que rompen el flujo de corrección (un link de repo, una imagen en un TP de código, un video, código + informe PDF juntos), te propone para cada uno **adaptarlo** a un solo flujo (ej: *"adjuntá una imagen de la salida"* → *"imprimí la salida por pantalla"*), **dejarlo para corrección manual** o **sacarlo de la rúbrica** —preguntándote con una recomendación—, y te devuelve la **consigna reescrita** lista para CREAR.
 
-La skill entrega el JSON listo para el botón **"Cargar criterios"** de Active-IA, más los campos (`tipo`, `numero`, `anio`) para completar en el formulario.
+La skill entrega el JSON listo para el botón **"Cargar criterios"** de Active-IA —incluido `modo_consolidacion` (y `extensiones_personalizadas` si corresponde), ya elegido según lo que la consigna necesita corregir— más los campos (`tipo`, `numero`, `anio`) para completar en el formulario.
 
 ### Validar una rúbrica
 
@@ -57,9 +59,10 @@ python scripts/simular_correccion.py \
   --rubrica examples/rubrica-tp-cli.json \
   --entrega examples/entrega-demo \
   --materia "Programación I" \
-  --alumno  "Alumno Demo" \
-  --modo solo_codigo
+  --alumno  "Alumno Demo"
 ```
+
+No hace falta pasar `--modo`: el script lo toma de `modo_consolidacion` dentro de `rubrica-tp-cli.json` (`proyecto_completo`, porque la rúbrica evalúa el `README`). Pasalo a mano solo si querés forzar otro modo.
 
 Esto consolida la entrega, arma el prompt de corrección con la rúbrica completa, dispara `claude -p` y muestra nota + feedback por criterio, validando la respuesta contra la rúbrica. Agregá `--no-run` para solo generar el material sin ejecutar el modelo.
 
@@ -84,7 +87,7 @@ rubrica-builder/
 
 ## 📐 Modelo de rúbrica
 
-El esquema completo (criterios, subcriterios, evidencias, penalizaciones, condiciones de desaprobación y reglas de validación) está documentado en [`references/modelo-rubrica.md`](references/modelo-rubrica.md), que cubre ambas versiones vigentes: **v1** (subcriterios sin peso, rúbricas ya cargadas) y **v2** (subcriterios con peso propio, la que la skill genera por defecto).
+El esquema completo (criterios, subcriterios, evidencias, penalizaciones, condiciones de desaprobación y reglas de validación) está documentado en [`references/modelo-rubrica.md`](references/modelo-rubrica.md), que cubre ambas versiones vigentes: **v1** (subcriterios sin peso, rúbricas ya cargadas) y **v2** (subcriterios con peso propio, la que la skill genera por defecto) — y también `modo_consolidacion`/`extensiones_personalizadas`, ahora parte del JSON portable.
 
 ## 📄 Licencia
 

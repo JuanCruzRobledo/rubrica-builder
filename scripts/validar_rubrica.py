@@ -49,6 +49,11 @@ RE_SUBCRITERIO_ID = re.compile(r"^[A-Z0-9]+\.[0-9]+$")  # C1.1, C2.3
 RE_PENALIZACION_ID = re.compile(r"^P[0-9]+$")       # P1, P2
 RE_CONDICION_ID = re.compile(r"^CD[0-9]+$")         # CD1, CD2
 
+# modo_consolidacion / extensiones_personalizadas: NO son parte de
+# CriteriosStructure (viven en RubricaCreate/RubricaUpdate), pero SÍ son parte del
+# JSON portable que esta skill produce -- ver references/modelo-rubrica.md.
+MODOS_CONSOLIDACION_VALIDOS = {"solo_codigo", "web_completo", "proyecto_completo", "personalizado"}
+
 
 class Validador:
     """Acumula errores en vez de cortar al primero: queremos ver TODO lo que
@@ -105,7 +110,35 @@ class Validador:
         self._validar_criterios(data.get("criterios"), version)
         self._validar_penalizaciones(data.get("penalizaciones", []))
         self._validar_condiciones(data.get("condiciones_desaprobacion", []))
+        self._validar_modo_consolidacion(data)
         return version
+
+    def _validar_modo_consolidacion(self, data: dict) -> None:
+        """Opcional y tolerante: si el JSON no trae `modo_consolidacion`, no es
+        error (el backend asume 'solo_codigo'). Si lo trae, debe ser uno de los
+        4 valores válidos; si es 'personalizado', exige extensiones_personalizadas."""
+        if "modo_consolidacion" not in data:
+            return
+        modo = data.get("modo_consolidacion")
+        if modo not in MODOS_CONSOLIDACION_VALIDOS:
+            self.err(
+                "raíz",
+                f"'modo_consolidacion' = '{modo}' no es válido. Debe ser uno de: "
+                f"{', '.join(sorted(MODOS_CONSOLIDACION_VALIDOS))}.",
+            )
+            return
+        if modo == "personalizado":
+            exts = data.get("extensiones_personalizadas")
+            if not isinstance(exts, list) or len(exts) == 0:
+                self.err(
+                    "raíz",
+                    "'modo_consolidacion' es 'personalizado' pero falta "
+                    "'extensiones_personalizadas' (lista no vacía, ej: ['.ipynb', '.sql']).",
+                )
+            else:
+                for i, e in enumerate(exts):
+                    if not isinstance(e, str) or not e.strip():
+                        self.err("raíz", f"extensiones_personalizadas[{i}] no puede estar vacía.")
 
     def _validar_criterios(self, criterios, schema_version: int) -> None:
         if not isinstance(criterios, list) or len(criterios) == 0:
@@ -328,6 +361,14 @@ def main() -> int:
     if version == 2:
         resumen += " · Σ pesos subcriterios = peso criterio ✓"
     print(resumen)
+    if "modo_consolidacion" in data:
+        modo = data.get("modo_consolidacion")
+        extra = ""
+        if modo == "personalizado":
+            extra = f" · extensiones_personalizadas={data.get('extensiones_personalizadas')}"
+        print(f"   modo_consolidacion={modo}{extra} (viaja en el JSON — rúbrica portable)")
+    else:
+        print("   modo_consolidacion: no incluido en el JSON (el backend asumirá 'solo_codigo')")
     return 0
 
 

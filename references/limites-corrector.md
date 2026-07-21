@@ -58,3 +58,15 @@ puede evaluarlo. El modo CURAR existe para detectar estos puntos ANTES de crear 
 rúbrica y resolverlos con una de las tres curas (ver "Modo CURAR" en `SKILL.md`):
 **adaptar** al flujo único, **mantener en la consigna + corrección manual**, o
 dejarlo **fuera de la rúbrica**.
+
+## Implicancia para CREAR y AUDITAR — elegir bien el `modo_consolidacion`
+
+La tabla "Extensiones por modo" de arriba es exactamente lo que decide si una
+evidencia es verificable o de adorno. Una evidencia bien escrita sobre un archivo
+cuya extensión el `modo_consolidacion` elegido no cubre **nunca llega al corrector**
+— mismo efecto práctico que un requisito omitido, solo que más difícil de detectar
+porque la evidencia SÍ está escrita en la rúbrica. Por eso CREAR determina el modo
+recién después de tener las evidencias (paso 4) y AUDITAR lo revisa como chequeo
+propio (paso 6): en ambos casos, el criterio es "¿la extensión del archivo de cada
+evidencia está en la lista del modo elegido?". Ver `SKILL.md` para el detalle de
+ambos pasos.

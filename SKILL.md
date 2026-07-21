@@ -84,7 +84,12 @@ dice el `peso` de cada uno, no hace falta describirlo en texto.
 Leé `references/modelo-rubrica.md`. Es la fuente de verdad del esquema (replica el
 Pydantic real) y documenta **ambas versiones**: v1 (subcriterios sin `peso`, para
 rúbricas ya cargadas) y v2 (subcriterios con `peso` propio, la que esta skill genera
-por defecto). Y si vas a curar una consigna (o crear una rúbrica), leé también
+por defecto). Ahí también está documentado `modo_consolidacion` /
+`extensiones_personalizadas`: gracias al JSON portable de Active-IA, este campo ya
+viaja DENTRO del JSON que se pega en "Cargar criterios" (opcional — si no viene, no
+pasa nada, el form no lo toca). Esta skill los completa siempre que pueda: una
+rúbrica no es autosuficiente si el corrector ni siquiera va a leer el archivo donde
+vive la evidencia. Y si vas a curar una consigna (o crear una rúbrica), leé también
 `references/limites-corrector.md`: documenta qué puede y qué NO puede evaluar el
 corrector (links, imágenes, ejecución, un solo flujo código/PDF), espejo del servicio
 real de consolidación. Tené presente las trampas del repo:
@@ -254,15 +259,35 @@ Objetivo: traducir la consigna en una rúbrica completa y autosuficiente.
      orden) reciben `base + 1`, el resto recibe `base`. Ejemplo: criterio de
      `peso: 25` con 3 subcriterios → `base=8`, `resto=1` → `9, 8, 8` (suma 25).
 
-4. **Penalizaciones y condiciones de desaprobación.** Si la consigna establece
+4. **Determiná el `modo_consolidacion`** (y, si hace falta, `extensiones_personalizadas`).
+   Con los criterios y evidencias ya armados, releé QUÉ archivos necesita **leer** el
+   corrector para verificar cada evidencia (ver `references/limites-corrector.md`,
+   tabla de extensiones por modo) y elegí:
+   - Todo lo evaluable vive en código fuente puro, sin HTML/CSS ni README que haga
+     falta leer → **`solo_codigo`**.
+   - Proyecto web (HTML/CSS/JSON de config) → **`web_completo`**.
+   - Además hay que leer README/Markdown, YAML, SQL, scripts de shell,
+     `.properties`, `.gradle`, etc. (documentación de ejecución, migraciones,
+     configuración) → **`proyecto_completo`**.
+   - La consigna pide algo con una extensión que ningún modo predefinido cubre
+     (notebooks `.ipynb`, `.r`, `.dart`, datasets `.csv`, etc.) → **`personalizado`**,
+     listando en `extensiones_personalizadas` EXACTAMENTE las extensiones que hacen
+     falta (con el punto, ej: `.ipynb`).
+   - **Chequeo cruzado obligatorio:** recorré cada evidencia que ya escribiste y
+     confirmá que el archivo donde vive está cubierto por el modo elegido. Una
+     evidencia sobre un archivo que el modo no va a leer es tan inútil como un
+     requisito omitido — el corrector directamente no lo ve (filtro de extensión,
+     ver `references/limites-corrector.md`).
+
+5. **Penalizaciones y condiciones de desaprobación.** Si la consigna establece
    castigos (repo privado, no compila) o reglas que tumban la nota (plagio, falta un
    requisito troncal), modelalas. `penalizaciones` descuentan un %; las
    `condiciones_desaprobacion` ponen un techo (`nota_maxima`). Si la consigna no dice
    nada de esto, dejalos como `[]` — no inventes castigos que el profesor no pidió.
 
-5. **Validá** con el script (ver "Validación obligatoria").
+6. **Validá** con el script (ver "Validación obligatoria").
 
-6. **Entregá** en el formato de salida de abajo.
+7. **Entregá** en el formato de salida de abajo.
 
 ---
 
@@ -408,14 +433,25 @@ pasos de auditoría de contenido de abajo.
 5. **Elementos visuales.** Si el TP tiene imágenes/tablas/esquemas que importan para
    evaluar y la rúbrica no los refleja en texto, incorporalos.
 
-6. **Ajuste de pesos.** Si agregaste, sacaste o consolidaste criterios (incluida la
+6. **Modo de consolidación.** Fijate qué `modo_consolidacion` trae la rúbrica (si no
+   trae ninguno, el backend asume `solo_codigo`) y confirmá que cubre las
+   extensiones de TODOS los archivos que las evidencias necesitan leer (tabla en
+   `references/limites-corrector.md`). Si encontrás una evidencia que depende de un
+   archivo cuya extensión el modo actual no cubre — caso típico: pide revisar el
+   `README.md` pero el modo es `solo_codigo`, que no incluye `.md` — es una omisión
+   estructural tan grave como un criterio faltante: el corrector jamás va a leer ese
+   archivo, por más bien redactada que esté la evidencia. Subí el modo
+   (`web_completo`/`proyecto_completo`) o pasá a `personalizado` con las extensiones
+   exactas, y dejalo reportado en los hallazgos.
+
+7. **Ajuste de pesos.** Si agregaste, sacaste o consolidaste criterios (incluida la
    migración del Paso 0), recalculá los `peso` para que la suma vuelva a ser
    exactamente 100, y que la de los subcriterios de cada criterio cierre con su
    `peso`. Respetá la importancia relativa que da la consigna.
 
-7. **Validá** con el script.
+8. **Validá** con el script.
 
-8. **Entregá** con el formato de salida (incluyendo el resumen de hallazgos).
+9. **Entregá** con el formato de salida (incluyendo el resumen de hallazgos).
 
 ---
 
@@ -441,10 +477,14 @@ python scripts/simular_correccion.py \
   --modo solo_codigo            # o web_completo | proyecto_completo | personalizado
 ```
 
+- `--modo` es **opcional** si el JSON de la rúbrica ya trae `modo_consolidacion` (lo
+  que ahora genera CREAR/AUDITAR): el script lo toma de ahí solo. Pasalo a mano solo
+  para forzar un modo distinto al que trae la rúbrica.
 - `--no-run` arma el material y te imprime el comando, sin ejecutar claude (útil para
   inspeccionar el `prompt_correccion.txt` que recibirá el modelo).
 - `--tipo TP` si la rúbrica es un `CriteriosStructure` sin campo `tipo`.
-- `--ext ".ipynb,.sql"` para `--modo personalizado`.
+- `--ext ".ipynb,.sql"` para `--modo personalizado` (o dejá que lo tome de
+  `extensiones_personalizadas` si ya está en el JSON).
 - Guarda `prompt_correccion.txt` (material exacto) y `correccion.json` (resultado).
 
 **Cómo leer el resultado.** El script valida la corrección contra la rúbrica y avisa
@@ -514,18 +554,25 @@ ALWAYS entregá en este orden:
 - Contradicciones: <qué y dónde, o "ninguna">
 - Omisiones: <qué requisitos faltaban, o "ninguna">
 - Invenciones: <qué se quitó, o "ninguna">
+- Modo de consolidación: <"OK, cubre todas las evidencias" | qué extensión faltaba
+  cubrir y a qué modo se subió>
 - Ajuste de pesos: <cómo quedó el reparto>
 ```
 
 **2. El JSON de `CriteriosStructure`** — en un bloque ```json, listo para pegar en
-el botón "Cargar criterios". Contiene exactamente: `titulo`, `descripcion`,
-`puntaje_maximo`, `metadata`, `criterios`, `penalizaciones`,
-`condiciones_desaprobacion`. Nada más. **No incluyas `schema_version`** en este
-JSON: es un campo aparte del payload de la rúbrica (como `tipo`/`numero`/`anio`),
-no de `CriteriosStructure`. Lo que marca la rúbrica como v2 es el `peso` en cada
-subcriterio — el front de Active-IA lo infiere solo.
+el botón "Cargar criterios" (o en el modal de edición: ambos ya soportan el JSON
+portable de Active-IA). Contiene: `titulo`, `descripcion`, `puntaje_maximo`,
+`metadata`, `criterios`, `penalizaciones`, `condiciones_desaprobacion`, y **siempre**
+`modo_consolidacion` — más `extensiones_personalizadas` si `modo_consolidacion` es
+`"personalizado"` (si no lo es, omitilo o dejalo en `null`). Este es el campo que
+antes se perdía al copiar/pegar el JSON: ahora viaja con la rúbrica y el formulario
+lo autocompleta solo. **No incluyas `schema_version`**: es un campo aparte del
+payload de la rúbrica (como `tipo`/`numero`/`anio`), no de `CriteriosStructure`. Lo
+que marca la rúbrica como v2 es el `peso` en cada subcriterio — el front de
+Active-IA lo infiere solo.
 
-**3. Campos para el formulario** — los que NO van en el JSON y se tipean aparte:
+**3. Campos para el formulario** — identidad de la instancia, no del contenido; NO
+van en el JSON y se tipean aparte:
 ```
 Para completar en el formulario de la rúbrica:
 - tipo: <TP | PARCIAL_1 | ... según la consigna>
@@ -537,8 +584,10 @@ Para completar en el formulario de la rúbrica:
 **4. Confirmación del validador** — pegá la línea de "✅ RÚBRICA VÁLIDA".
 
 Mirá `assets/ejemplo-rubrica.json` como molde de una rúbrica v2 completa y válida
-(con `peso` por subcriterio). Para retrocompatibilidad, `examples/rubrica-tp-cli-v1.json`
-es un ejemplo v1 (sin `peso` en subcriterios).
+(con `peso` por subcriterio y `modo_consolidacion` correctamente elegido — en ese
+ejemplo, `proyecto_completo`, porque uno de sus criterios evalúa el `README.md` y
+`solo_codigo`/`web_completo` no incluyen `.md`). Para retrocompatibilidad,
+`examples/rubrica-tp-cli-v1.json` es un ejemplo v1 (sin `peso` en subcriterios).
 
 ## Errores que arruinan una rúbrica (evitalos)
 
@@ -560,3 +609,8 @@ es un ejemplo v1 (sin `peso` en subcriterios).
   de `peso` (eso es el modelo V1 muerto).
 - Meter `materia_id`/`tipo`/`numero`/`anio` dentro del JSON de criterios: van en el
   formulario, no en el JSON que se importa.
+- **Elegir un `modo_consolidacion` que no cubre las extensiones que tus propias
+  evidencias necesitan** (ej: evidencia sobre el `README.md` con modo `solo_codigo`,
+  que no incluye `.md`) — la evidencia queda de adorno: el corrector nunca va a leer
+  ese archivo. Hacé siempre el chequeo cruzado del paso 4 de CREAR / paso 6 de
+  AUDITAR.
